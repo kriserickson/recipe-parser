@@ -73,7 +73,7 @@ def evaluate():
     # Build model pipeline
     model = make_pipeline(
         build_feature_pipeline(),
-        LogisticRegression(max_iter=1000)
+        LogisticRegression(max_iter=1000, class_weight='balanced')
     )
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)

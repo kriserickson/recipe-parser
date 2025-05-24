@@ -15,6 +15,7 @@ def parse_html(html):
 
     def recurse(element, depth=0):
 
+        #Skip comments
         if isinstance(element, Comment):
             return
 

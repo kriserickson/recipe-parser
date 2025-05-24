@@ -34,11 +34,11 @@ def label_element(text, label_data):
     return 'none'
 
 def load_labeled_blocks(limit=None):
-    X, y = [], []
+    x, y = [], []
     json_files = sorted(LABELS_DIR.glob("recipe_*.json"))
     total = len(json_files)
     for i, json_file in enumerate(json_files):
-        if limit and len(X) >= limit:
+        if limit and len(x) >= limit:
             break
 
         base = json_file.stem
@@ -52,13 +52,13 @@ def load_labeled_blocks(limit=None):
 
         for el in elements:
             label = label_element(el["text"], label_data)
-            X.append(el)
+            x.append(el)
             y.append(label)
 
         if (i + 1) % 100 == 0 or (i + 1) == total:
             percent = ((i + 1) / total) * 100
             print(f"📦 Processed {i + 1}/{total} files ({percent:.1f}%)")
-    return X, y
+    return x, y
 
 def validate_data(X, y):
     if not isinstance(X, (np.ndarray, pd.DataFrame)):
@@ -68,16 +68,10 @@ def validate_data(X, y):
     if len(X) != len(y):
         raise ValueError(f"X_train and y_train must have the same length. Got {len(X)} and {len(y)}")
 
-def extract_features(elements):
-    """
-    Convert raw HTML elements into text features for the model.
-    """
-    return [el["text"] for el in elements]  # Extract only the text field from each element
-
 def train():
     start = time()
     print("🔄 Loading labeled data...")
-    X_raw, y = load_labeled_blocks(limit=100)
+    X_raw, y = load_labeled_blocks()
     print(f"✅ Loaded {len(X_raw)} blocks.")
 
     print("🔧 Extracting features...")
@@ -112,7 +106,7 @@ def train():
 
     print("📊 Evaluating...")
     y_pred = model.predict(X_test)
-    print(classification_report(y_test, y_pred))
+    print(classification_report(y_test, y_pred, zero_division=0))
 
     dump(model, MODEL_PATH)
     print(f"✅ Model saved to {MODEL_PATH}")
