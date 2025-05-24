@@ -1,0 +1,31 @@
+{
+  "hash": "6051c733c1a2d38e89efcbb89edb2cde907cec7b",
+  "title": "Sidecar",
+  "image": "http://recipe-folder.com/img/recipe-images/089/605/2798643889.jpg",
+  "href": "http://recipe-folder.com/recipe/5e723df2138ae0082650db9d",
+  "extension": "User Added",
+  "firstAdded": "2020-03-18T15:27:46.877000",
+  "users": [
+    null
+  ],
+  "ratings": [],
+  "keywords": [],
+  "directions": [
+    "0",
+    "Skala långa citroncest med en potatisskalare.",
+    "1",
+    "När pressat ur citronen, dra citronsaft runt kanterna på ett coctailglas och sockra det.",
+    "2",
+    "Skaka alla ingredienserna i en shaker med is och sila upp i cocktailglaset."
+  ],
+  "ingredients": [
+    "0",
+    "3 cl Cognac",
+    "1",
+    "3 cl Cointreau",
+    "2",
+    "3 cl pressad citron"
+  ],
+  "__v": 1,
+  "hidden": true
+}

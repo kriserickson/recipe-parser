@@ -1,0 +1,35 @@
+{
+  "hash": "2cabed4c8dd84deb9c72e9a492248acafa9039c9",
+  "title": "Potato pancakes",
+  "image": "",
+  "href": "http://recipe-folder.com/recipe/5e305e58f2c88a29c1754108",
+  "extension": "User Added",
+  "firstAdded": "2020-01-28T16:16:24.232000",
+  "users": [
+    null
+  ],
+  "ratings": [],
+  "keywords": [],
+  "directions": [
+    "0",
+    "Grate the potatoes.",
+    "1",
+    "Mix with chopped onions, flour and egg.",
+    "2",
+    "Add spices.",
+    "3",
+    "Fry."
+  ],
+  "ingredients": [
+    "0",
+    "1 kg potatoes",
+    "1",
+    "1 egg",
+    "2",
+    "1 tbsp flour",
+    "3",
+    "1 onion"
+  ],
+  "__v": 1,
+  "hidden": true
+}

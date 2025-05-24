@@ -1,0 +1,31 @@
+{
+  "hash": "e16fa00f29e9255722e422f2bd17a0746cd86dfa",
+  "title": "Boiled Eggs (IP)",
+  "image": "http://recipe-folder.com/img/recipe-images/068/977/2787153068.jpg",
+  "href": "http://recipe-folder.com/recipe/5bfb111f94ae322cc92109a3",
+  "extension": "User Added",
+  "firstAdded": "2018-11-25T21:16:15.580000",
+  "users": [
+    null
+  ],
+  "ratings": [
+    {
+      "user": "5bfaf5fe780287195894ff69",
+      "rating": 4
+    }
+  ],
+  "keywords": [],
+  "directions": [
+    "0",
+    "Place steamer rack in IP, add 1 cup water, arrange eggs on rack, Set IP: Manual, High steam, 8 minutes",
+    "Quick release, then chill eggs immediately in cool or cold water, peal."
+  ],
+  "ingredients": [
+    "0",
+    "1 cup water",
+    "12 eggs"
+  ],
+  "__v": 8,
+  "hidden": true,
+  "rating": 4
+}

@@ -1,0 +1,41 @@
+{
+  "hash": "990b0507ac5fc7321910b57cf90a0409dfe76925",
+  "title": "Banana bread",
+  "image": "",
+  "href": "http://recipe-folder.com/recipe/5e303071f2c88a29c17540e2",
+  "extension": "User Added",
+  "firstAdded": "2020-01-28T13:00:33.848000",
+  "users": [
+    null
+  ],
+  "ratings": [],
+  "keywords": [],
+  "directions": [
+    "0",
+    "Mix all ingredients.",
+    "1",
+    "Bake until ready."
+  ],
+  "ingredients": [
+    "0",
+    "285 gr flour",
+    "1",
+    "1 tsp baking soda",
+    "2",
+    "1/2 tsp salt",
+    "3",
+    "110 gr butter",
+    "4",
+    "225 gr caster sugar",
+    "5",
+    "2 eggs",
+    "6",
+    "4 ripe bananas",
+    "7",
+    "85 ml buttermilk",
+    "8",
+    "1 tsp vanilla extract"
+  ],
+  "__v": 1,
+  "hidden": true
+}

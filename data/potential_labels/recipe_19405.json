@@ -1,0 +1,49 @@
+{
+  "hash": "cdadaecfa7b2c5333aa11d8b35b021f900f1571b",
+  "title": "Pizza dough",
+  "image": "",
+  "href": "http://recipe-folder.com/recipe/5e305c83f2c88a29c1754106",
+  "extension": "User Added",
+  "firstAdded": "2020-01-28T16:08:35.717000",
+  "users": [
+    null
+  ],
+  "ratings": [],
+  "keywords": [],
+  "directions": [
+    "0",
+    "Mix milk with yeast and sugar and leave it to rise for 10 min.",
+    "1",
+    "Put flour into a bowl, create a whole in the middle and pur milk into it.",
+    "2",
+    "Mix.",
+    "3",
+    "Add salt, olive oil and spices and mix.",
+    "4",
+    "Cover the bowl and leave the dough in a warm place for 1h.",
+    "5",
+    "Make a ball then flatten.",
+    "6",
+    "Put it on a form and leave for 30 min.",
+    "7",
+    "Bake in 250C for 12-15 min."
+  ],
+  "ingredients": [
+    "0",
+    "110 ml milk of 35C",
+    "1",
+    "1 tsp sugar",
+    "2",
+    "4 gr yeast",
+    "3",
+    "1 tsp salt",
+    "4",
+    "30 gr olive oil",
+    "5",
+    "200 gr flour",
+    "6",
+    "spices"
+  ],
+  "__v": 1,
+  "hidden": true
+}

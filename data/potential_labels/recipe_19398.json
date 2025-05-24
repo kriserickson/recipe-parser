@@ -1,0 +1,51 @@
+{
+  "hash": "db30a8d3dc3f32c0b003eacafc967c5fadd8d8d1",
+  "title": "Russian fish pie",
+  "image": "",
+  "href": "http://recipe-folder.com/recipe/5e3054acf2c88a29c17540f8",
+  "extension": "User Added",
+  "firstAdded": "2020-01-28T15:35:08.065000",
+  "users": [
+    null
+  ],
+  "ratings": [],
+  "keywords": [],
+  "directions": [
+    "0",
+    "Fry carrots with onions.",
+    "1",
+    "Fry the fish a bit.",
+    "2",
+    "Cook the rice.",
+    "3",
+    "Spread a layer of dough in a rectangular baking form.",
+    "4",
+    "Put half of carrot and onion mix over the dough.",
+    "5",
+    "Sprinkle rice.",
+    "6",
+    "Put fish pieces.",
+    "7",
+    "Cover with the other half of carrot and onion.",
+    "8",
+    "Cover with more dough.",
+    "9",
+    "Wait 10-15 minutes.",
+    "10",
+    "Bake."
+  ],
+  "ingredients": [
+    "0",
+    "pre-made yeast dough",
+    "1",
+    "carrots",
+    "2",
+    "onions",
+    "3",
+    "fish",
+    "4",
+    "rice"
+  ],
+  "__v": 1,
+  "hidden": true
+}

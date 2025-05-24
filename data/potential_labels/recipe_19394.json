@@ -1,0 +1,35 @@
+{
+  "hash": "577c86089e71c78d41c53aac887a624518088c01",
+  "title": "Coffee cream",
+  "image": "",
+  "href": "http://recipe-folder.com/recipe/5e305108f2c88a29c17540f0",
+  "extension": "User Added",
+  "firstAdded": "2020-01-28T15:19:36.648000",
+  "users": [
+    null
+  ],
+  "ratings": [],
+  "keywords": [],
+  "directions": [
+    "0",
+    "Mix egg yolks with sugar, add coffee.",
+    "1",
+    "Stir over steam until dense.",
+    "2",
+    "Continue mixing while it cools down.",
+    "3",
+    "Add butter."
+  ],
+  "ingredients": [
+    "0",
+    "370 gr butter",
+    "1",
+    "30 gr powder sugar",
+    "2",
+    "1/2 glass strong coffee",
+    "3",
+    "2 egg yolks"
+  ],
+  "__v": 1,
+  "hidden": true
+}

@@ -1,0 +1,37 @@
+{
+  "hash": "36b86ff5c262c4ed6105f01cc712e0294c82e15f",
+  "title": "Bread basic recipe",
+  "image": "",
+  "href": "http://recipe-folder.com/recipe/5e3050b5f2c88a29c17540ee",
+  "extension": "User Added",
+  "firstAdded": "2020-01-28T15:18:13.428000",
+  "users": [
+    null
+  ],
+  "ratings": [],
+  "keywords": [],
+  "directions": [
+    "0",
+    "Make dough.",
+    "1",
+    "Bake until ready."
+  ],
+  "ingredients": [
+    "0",
+    "250 ml warm water",
+    "1",
+    "200 gr white flour",
+    "2",
+    "300 gr dark flour",
+    "3",
+    "2 tsp sugar (10 gr)",
+    "4",
+    "2 tsp salt (10 gr)",
+    "5",
+    "10-15 gr oil",
+    "6",
+    "7 gr yeast"
+  ],
+  "__v": 1,
+  "hidden": true
+}

@@ -1,0 +1,33 @@
+{
+  "hash": "836636ef601452ef96d1e7c055ae0123cca63f75",
+  "title": "Hallå Hallon",
+  "image": "",
+  "href": "http://recipe-folder.com/recipe/5e74e358138ae0082650dbc9",
+  "extension": "User Added",
+  "firstAdded": "2020-03-20T15:38:00.893000",
+  "users": [
+    null
+  ],
+  "ratings": [],
+  "keywords": [],
+  "directions": [
+    "0",
+    "Hallonsyrup:100 gram frysta hallon + 100 gram socker + 1 dl vatten",
+    "1",
+    "Värm upp hallon, socker och vatten till ca 70 grader i en kastrull. Ställ av kastrullen, täck över och låt stå och dra, ju längre desto bättre. Sila av.",
+    "2",
+    "Skaka allt utom mousserande i shaker med is, häll upp i champagneglas och toppa med mousserande"
+  ],
+  "ingredients": [
+    "0",
+    "40 ml Explorer Gin",
+    "1",
+    "20 ml citronjuice",
+    "2",
+    "30 ml hallonsyrup*",
+    "3",
+    "toppa med mousserande"
+  ],
+  "__v": 1,
+  "hidden": true
+}
