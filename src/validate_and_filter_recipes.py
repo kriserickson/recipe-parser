@@ -35,32 +35,32 @@ PROCESS_FAILED = "--process-failed-files" in sys.argv
 
 # === State Tracking ===
 if STATE_FILE.exists():
-    state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-    SELENIUM_WHITELIST = set(state.get("selenium_whitelist", []))
+    processing_state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    SELENIUM_WHITELIST = set(processing_state.get("selenium_whitelist", []))
 else:
-    state = {
+    processing_state = {
         "processed_files": [],
         "failed_files": {},
         "output_index": 0,
         "selenium_whitelist": ["allrecipes.com"]
     }
-    SELENIUM_WHITELIST = set(state["selenium_whitelist"])
+    SELENIUM_WHITELIST = set(processing_state["selenium_whitelist"])
 
-last_access_by_domain = {}
+last_domain_access = {}
 
 
 def save_state():
-    state["selenium_whitelist"] = sorted(SELENIUM_WHITELIST)
-    STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    processing_state["selenium_whitelist"] = sorted(SELENIUM_WHITELIST)
+    STATE_FILE.write_text(json.dumps(processing_state, indent=2), encoding="utf-8")
 
 
 def throttle_domain(domain):
     now = time.time()
-    last_time = last_access_by_domain.get(domain, 0)
+    last_time = last_domain_access.get(domain, 0)
     wait = THROTTLE_DELAY - (now - last_time)
     if wait > 0:
         return False  # not ready yet
-    last_access_by_domain[domain] = now
+    last_domain_access[domain] = now
     return True
 
 
@@ -119,22 +119,22 @@ def fetch_with_selenium(href):
 
 
 def process_file(json_path):
-    if json_path.name in state["processed_files"]:
+    if json_path.name in processing_state["processed_files"]:
         print(f"⏩ Already processed: {json_path.name}")
         return True
-    if not PROCESS_FAILED and json_path.name in state["failed_files"]:
+    if not PROCESS_FAILED and json_path.name in processing_state["failed_files"]:
         print(f"⏩ Skipping known failed: {json_path.name}")
         return True
 
     try:
         data = json.loads(json_path.read_text(encoding="utf-8"))
     except Exception as e:
-        state["failed_files"][json_path.name] = f"Invalid JSON: {e}"
+        processing_state["failed_files"][json_path.name] = f"Invalid JSON: {e}"
         return True
 
     href = data.get("href", "").strip()
     if not href:
-        state["failed_files"][json_path.name] = "Missing href"
+        processing_state["failed_files"][json_path.name] = "Missing href"
         return True
 
     domain = tldextract.extract(href).top_domain_under_public_suffix
@@ -152,7 +152,7 @@ def process_file(json_path):
             html = fetch_with_selenium(href)
 
     if not isinstance(html, str) or html.strip() == "":
-        state["failed_files"][json_path.name] = {
+        processing_state["failed_files"][json_path.name] = {
             "url": href,
             "reason": "Empty or invalid HTML from both methods"
         }
@@ -160,13 +160,13 @@ def process_file(json_path):
         print(f"🔁 Added {domain} to Selenium whitelist")
         return True
 
-    out_index = state["output_index"]
+    out_index = processing_state["output_index"]
     base_name = f"recipe_{out_index:05d}"
 
     valid, fail_reason = is_valid_page(html, data)
     if not valid:
         print(f"❌ Failed: {base_name}")
-        state["failed_files"][json_path.name] = {
+        processing_state["failed_files"][json_path.name] = {
             "url": href,
             "reason": fail_reason or "Page content did not match expectations"
         }
@@ -175,8 +175,8 @@ def process_file(json_path):
     LABELS_DIR.joinpath(f"{base_name}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     HTML_DIR.joinpath(f"{base_name}.html").write_text(html, encoding="utf-8")
 
-    state["processed_files"].append(json_path.name)
-    state["output_index"] += 1
+    processing_state["processed_files"].append(json_path.name)
+    processing_state["output_index"] += 1
     print(f"✅ Saved: {base_name}")
     return True
 

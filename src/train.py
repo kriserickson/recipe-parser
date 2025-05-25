@@ -34,11 +34,14 @@ def label_element(text, label_data):
     return 'none'
 
 def load_labeled_blocks(limit=None):
-    x, y = [], []
+    X, y = [], []
     json_files = sorted(LABELS_DIR.glob("recipe_*.json"))
     total = len(json_files)
+    if limit:
+        total = min(total, limit)
+
     for i, json_file in enumerate(json_files):
-        if limit and len(x) >= limit:
+        if limit and i >= limit:
             break
 
         base = json_file.stem
@@ -52,33 +55,30 @@ def load_labeled_blocks(limit=None):
 
         for el in elements:
             label = label_element(el["text"], label_data)
-            x.append(el)
+            X.append(el)
             y.append(label)
 
         if (i + 1) % 100 == 0 or (i + 1) == total:
             percent = ((i + 1) / total) * 100
             print(f"📦 Processed {i + 1}/{total} files ({percent:.1f}%)")
-    return x, y
+    return X, y
 
 def validate_data(X, y):
-    if not isinstance(X, (np.ndarray, pd.DataFrame)):
-        raise ValueError(f"X_train must be a numpy array or pandas DataFrame, got {type(X)}")
-    if not isinstance(y, (np.ndarray, pd.Series)):
-        raise ValueError(f"y_train must be a numpy array or pandas Series, got {type(y)}")
+    """Validate data formats allowing for lists as well as numpy arrays"""
     if len(X) != len(y):
         raise ValueError(f"X_train and y_train must have the same length. Got {len(X)} and {len(y)}")
+    
+    # Additional validation can be added here if needed
+    # But we won't require numpy arrays or pandas DataFrames anymore
 
 def train():
     start = time()
     print("🔄 Loading labeled data...")
-    X_raw, y = load_labeled_blocks()
+    X_raw, y = load_labeled_blocks(limit=100)
     print(f"✅ Loaded {len(X_raw)} blocks.")
 
     print("🔧 Extracting features...")
-    X_features = extract_features(X_raw)  # Ensure X_features is a list of strings
-
-    # Ensure X_features is a NumPy array of strings
-    X_features = np.array(X_features, dtype=str)
+    X_features = [str(f) for f in extract_features(X_raw)]  # Ensure X_features is a list of strings
 
     print("🎯 Splitting train/test...")
     X_train, X_test, y_train, y_test = train_test_split(X_features, y, test_size=0.2, random_state=42)
@@ -87,8 +87,8 @@ def train():
     y_test = np.array(y_test)
 
     logging.basicConfig(level=logging.INFO)
-    logging.info(f"Shape of X_train: {X_train.shape}")
-    logging.info(f"Shape of y_train: {y_train.shape}")
+    logging.info(f"X_train length: {len(X_train)}")
+    logging.info(f"y_train length: {len(y_train)}")
     validate_data(X_train, y_train)
 
     print("🧠 Training model...")
@@ -97,10 +97,10 @@ def train():
         LogisticRegression(max_iter=1000, class_weight='balanced')
     )
 
-    print(f"X_train shape: {X_train.shape}, type: {type(X_train)}")
-    print(f"y_train shape: {len(y_train)}, type: {type(y_train)}")
-    print(f"X_test shape: {X_test.shape}, type: {type(X_test)}")
-    print(f"y_test shape: {len(y_test)}, type: {type(y_test)}")
+    print(f"X_train length: {len(X_train)}, type: {type(X_train)}")
+    print(f"y_train length: {len(y_train)}, type: {type(y_train)}")
+    print(f"X_test length: {len(X_test)}, type: {type(X_test)}")
+    print(f"y_test length: {len(y_test)}, type: {type(y_test)}")
 
     model.fit(X_train, y_train)
 
@@ -114,4 +114,3 @@ def train():
 
 if __name__ == "__main__":
     train()
-
