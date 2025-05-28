@@ -1,21 +1,63 @@
-from bs4 import BeautifulSoup, Comment
+"""
+HTML parsing module for recipe extraction.
 
+This module provides functionality to parse HTML content and extract
+relevant text elements while maintaining structural information.
+"""
 
-def parse_html(html):
+from typing import List, Dict, Any, Union
+from bs4 import BeautifulSoup, Comment, Tag, NavigableString
+
+# Constants for HTML parsing
+EXCLUDED_TAGS: List[str] = [
+    "script", "style", "noscript", "footer",
+    "nav", "link", "meta", "button"
+]
+
+def parse_html(html: str) -> List[Dict[str, Any]]:
     """
-    Parses the HTML and returns a list of elements with metadata.
-    Each element is a dict with keys like: 'text', 'tag', 'depth', etc.
+    Parse HTML content and extract text elements with metadata.
+
+    Parameters
+    ----------
+    html : str
+        Raw HTML content to parse
+
+    Returns
+    -------
+    List[Dict[str, Any]]
+        List of dictionaries containing element data with keys:
+        - 'text': str, extracted text content
+        - 'tag': str, HTML tag name of parent element
+        - 'depth': int, nesting depth in document tree
+
+    Raises
+    ------
+    ValueError
+        If input HTML is empty or invalid
     """
+    if not html or not html.strip():
+        raise ValueError("HTML content cannot be empty")
+
     soup = BeautifulSoup(html, 'html.parser')
 
-    for tag in soup(["script", "style", "noscript", "footer", "nav", 'link', 'meta', 'button']):
+    # Remove unwanted elements
+    for tag in soup(EXCLUDED_TAGS):
         tag.decompose()
 
-    elements = []
+    elements: List[Dict[str, Any]] = []
 
-    def recurse(element, depth=0):
+    def recurse(element: Union[Tag, NavigableString], depth: int = 0) -> None:
+        """
+        Recursively process HTML elements and extract text content.
 
-        #Skip comments
+        Parameters
+        ----------
+        element : Union[Tag, NavigableString]
+            BeautifulSoup element to process
+        depth : int, optional
+            Current nesting depth, by default 0
+        """
         if isinstance(element, Comment):
             return
 

@@ -1,5 +1,10 @@
-# train.py
-# Train an HTML block classifier using labeled JSON and HTML pairs
+"""
+Train an HTML block classifier using labeled JSON and HTML pairs.
+
+This module handles the training pipeline for classifying HTML blocks
+into recipe components (ingredients, directions, title, etc.) using
+supervised learning.
+"""
 
 from sklearn.pipeline import make_pipeline
 from sklearn.linear_model import LogisticRegression
@@ -21,7 +26,17 @@ LABELS_DIR = Path("../data/labels")
 HTML_DIR = Path("../data/html_pages")
 MODEL_PATH = Path("../models/model.joblib")
 
-def label_element(text, label_data):
+def label_element(text: str, label_data: dict) -> str:
+    """
+    Classify a text element based on recipe label data.
+
+    Args:
+        text: The text content to classify
+        label_data: Dictionary containing recipe components (ingredients, directions, title)
+
+    Returns:
+        str: Classification label ('ingredient', 'direction', 'title', or 'none')
+    """
     t = text.strip().lower()
     if not t or t.isdigit():
         return 'none'
@@ -33,12 +48,24 @@ def label_element(text, label_data):
         return 'title'
     return 'none'
 
-def load_labeled_blocks(limit=None):
-    X, y = [], []
+def load_labeled_blocks(limit: int | None = None) -> tuple[list, list]:
+    """
+    Load and parse labeled HTML blocks from files.
+
+    Args:
+        limit: Optional maximum number of files to process
+
+    Returns:
+        tuple: (features_list, labels_list) containing the training data
+    """
+    features_list, labels_list = [], []
     json_files = sorted(LABELS_DIR.glob("recipe_*.json"))
     total = len(json_files)
+
     if limit:
         total = min(total, limit)
+
+    report_size = max(10, int(total / 100))  # Report every 1% of total files
 
     for i, json_file in enumerate(json_files):
         if limit and i >= limit:
@@ -55,23 +82,38 @@ def load_labeled_blocks(limit=None):
 
         for el in elements:
             label = label_element(el["text"], label_data)
-            X.append(el)
-            y.append(label)
+            features_list.append(el)
+            labels_list.append(label)
 
-        if (i + 1) % 100 == 0 or (i + 1) == total:
+        if (i + 1) % report_size == 0 or (i + 1) == total:
             percent = ((i + 1) / total) * 100
             print(f"📦 Processed {i + 1}/{total} files ({percent:.1f}%)")
-    return X, y
+    return features_list, labels_list
 
-def validate_data(X, y):
-    """Validate data formats allowing for lists as well as numpy arrays"""
-    if len(X) != len(y):
-        raise ValueError(f"X_train and y_train must have the same length. Got {len(X)} and {len(y)}")
+def validate_data(features: list | np.ndarray, labels: list | np.ndarray) -> None:
+    """
+    Validate that features and labels meet the required format.
+
+    Args:
+        features: Training features as list or numpy array
+        labels: Training labels as list or numpy array
+
+    Raises:
+        ValueError: If data validation fails
+    """
+    if len(features) != len(labels):
+        raise ValueError(
+            f"Features and labels must have the same length. "
+            f"Got {len(features)} and {len(labels)}"
+        )
+
+def train() -> None:
+    """
+    Execute the complete training pipeline.
     
-    # Additional validation can be added here if needed
-    # But we won't require numpy arrays or pandas DataFrames anymore
-
-def train():
+    Loads data, extracts features, trains the model, and saves it to disk.
+    Prints progress and evaluation metrics throughout the process.
+    """
     start = time()
     print("🔄 Loading labeled data...")
     X_raw, y = load_labeled_blocks(limit=100)

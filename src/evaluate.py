@@ -1,6 +1,11 @@
 # evaluate.py
 # Evaluate the trained HTML block classifier against labeled JSON + HTML pairs
 
+from pathlib import Path
+from typing import List, Tuple, Dict, Any, Union
+
+import json
+import pandas as pd
 from sklearn.metrics import classification_report
 from sklearn.pipeline import make_pipeline
 from sklearn.linear_model import LogisticRegression
@@ -9,18 +14,26 @@ from sklearn.model_selection import train_test_split
 from html_parser import parse_html
 from feature_extraction import extract_features, build_feature_pipeline
 
-import json
-from pathlib import Path
-import pandas as pd
-
-LABELS_DIR = Path("../data/labels")
-HTML_DIR = Path("../data/html_pages")
+# Directory constants
+LABELS_DIR = Path("../data/labels")  # Directory containing JSON label files
+HTML_DIR = Path("../data/html_pages")  # Directory containing HTML files
 
 
-def label_element(text, label_data):
+def label_element(text: str, label_data: Dict[str, Any]) -> str:
     """
-    Given a block of text and JSON labels, determine its label.
-    Return 'ingredient', 'direction', 'title', or 'none'.
+    Determine the label for a given block of text using JSON label data.
+
+    Parameters
+    ----------
+    text : str
+        The text block to be labeled
+    label_data : dict
+        Dictionary containing recipe data with keys 'ingredients', 'directions', 'title'
+
+    Returns
+    -------
+    str
+        One of: 'ingredient', 'direction', 'title', or 'none'
     """
     t = text.strip().lower()
     if not t or t.isdigit():
@@ -34,9 +47,15 @@ def label_element(text, label_data):
     return 'none'
 
 
-def load_labeled_blocks():
+def load_labeled_blocks() -> Tuple[List[Dict[str, Any]], List[str]]:
     """
-    Load all labeled HTML blocks with features and true labels
+    Load all labeled HTML blocks with features and their corresponding labels.
+
+    Returns
+    -------
+    Tuple[List[Dict[str, Any]], List[str]]
+        X: List of dictionaries containing HTML elements and their features
+        y: List of corresponding labels
     """
     X, y = [], []
     for json_file in sorted(LABELS_DIR.glob("recipe_*.json")):
@@ -56,7 +75,17 @@ def load_labeled_blocks():
     return X, y
 
 
-def evaluate():
+def evaluate() -> None:
+    """
+    Evaluate the HTML block classifier using labeled data.
+    
+    Performs the following steps:
+    1. Loads labeled blocks
+    2. Extracts features
+    3. Splits data into training and test sets
+    4. Trains a logistic regression model
+    5. Prints classification report
+    """
     # Load labeled HTML text chunks and their true labels
     X_raw, y = load_labeled_blocks()
     X_features = extract_features(X_raw)
