@@ -10,7 +10,8 @@ from typing import Final
 DATA_DIR: Final[Path] = Path("..") / "data"
 HTML_DIR: Final[Path] = DATA_DIR / "html_pages"
 LABEL_DIR: Final[Path] = DATA_DIR / "labels"
-MODEL_PATH: Final[Path] = Path("..") / "models" / "model.joblib"
+MODEL_DIR: Final[Path] = Path("..") / "models"
+MODEL_PATH: Final[Path] = MODEL_DIR / "model.joblib"
 
 # Validate critical paths exist
 def validate_paths() -> None:

@@ -11,69 +11,8 @@ from sklearn.pipeline import make_pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
-from html_parser import parse_html
-from feature_extraction import extract_features, build_feature_pipeline
-
-# Directory constants
-LABELS_DIR = Path("../data/labels")  # Directory containing JSON label files
-HTML_DIR = Path("../data/html_pages")  # Directory containing HTML files
-
-
-def label_element(text: str, label_data: Dict[str, Any]) -> str:
-    """
-    Determine the label for a given block of text using JSON label data.
-
-    Parameters
-    ----------
-    text : str
-        The text block to be labeled
-    label_data : dict
-        Dictionary containing recipe data with keys 'ingredients', 'directions', 'title'
-
-    Returns
-    -------
-    str
-        One of: 'ingredient', 'direction', 'title', or 'none'
-    """
-    t = text.strip().lower()
-    if not t or t.isdigit():
-        return 'none'
-    if any(t in i.lower() for i in label_data.get("ingredients", [])):
-        return 'ingredient'
-    if any(t in d.lower() for d in label_data.get("directions", [])):
-        return 'direction'
-    if label_data.get("title", "").strip().lower() == t:
-        return 'title'
-    return 'none'
-
-
-def load_labeled_blocks() -> Tuple[List[Dict[str, Any]], List[str]]:
-    """
-    Load all labeled HTML blocks with features and their corresponding labels.
-
-    Returns
-    -------
-    Tuple[List[Dict[str, Any]], List[str]]
-        X: List of dictionaries containing HTML elements and their features
-        y: List of corresponding labels
-    """
-    X, y = [], []
-    for json_file in sorted(LABELS_DIR.glob("recipe_*.json")):
-        base = json_file.stem
-        html_file = HTML_DIR / f"{base}.html"
-        if not html_file.exists():
-            continue
-
-        label_data = json.loads(json_file.read_text(encoding="utf-8"))
-        html = html_file.read_text(encoding="utf-8")
-        elements = parse_html(html)
-
-        for el in elements:
-            label = label_element(el["text"], label_data)
-            X.append(el)
-            y.append(label)
-    return X, y
-
+from feature_extraction import build_feature_pipeline, load_labeled_blocks
+from config import LABEL_DIR, HTML_DIR
 
 def evaluate() -> None:
     """
@@ -87,14 +26,10 @@ def evaluate() -> None:
     5. Prints classification report
     """
     # Load labeled HTML text chunks and their true labels
-    X_raw, y = load_labeled_blocks()
-    X_features = extract_features(X_raw)
+    X_raw, y = load_labeled_blocks(LABEL_DIR, HTML_DIR, limit=100)
 
     # Convert list of dicts to DataFrame if needed
-    if isinstance(X_features, list) and isinstance(X_features[0], dict):
-        X_features = pd.DataFrame(X_features)
-
-    print(f"Feature matrix shape: {X_features.shape}, type: {type(X_features)}")
+    X_features = [str(f) for f in X_raw]  # Ensure X_features is a list of strings
 
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(X_features, y, test_size=0.2, random_state=42)

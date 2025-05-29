@@ -14,8 +14,8 @@ from typing import Dict, List, Optional
 from joblib import load
 
 from html_parser import parse_html
-from feature_extraction import extract_features
 from config import MODEL_PATH
+from feature_extraction import extract_features
 
 # Configure logging
 logging.basicConfig(
@@ -57,7 +57,14 @@ def extract_structured_data(html_path: Path) -> Dict[str, Optional[List[str]]]:
 
     logger.info(f"Processing HTML file: {html_path}")
     elements = parse_html(html)
-    features = extract_features(elements)
+    text_features = []
+    all_features = []
+
+    for idx, el in enumerate(elements):
+        text_elem = el.get("text", "").strip()
+        text_features.append(text_elem)
+        features = extract_features(el, text_elem, elements, idx)
+        all_features.append(features)
 
     try:
         model = load(MODEL_PATH)
@@ -65,7 +72,9 @@ def extract_structured_data(html_path: Path) -> Dict[str, Optional[List[str]]]:
         logger.error(f"Model file not found: {MODEL_PATH}")
         raise
 
-    predictions = model.predict(features)
+    # X_features = [str(f) for f in all_features]
+
+    predictions = model.predict(all_features)
 
     structured: Dict[str, Optional[List[str]]] = {
         "title": None,
