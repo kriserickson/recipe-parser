@@ -16,6 +16,7 @@ from typing import Dict, Any, Tuple
 import json
 import re
 from html_parser import parse_html
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # Constants
 MAX_FEATURES: int = 1000
@@ -62,59 +63,61 @@ def label_element(text: str, label_data: Dict[str, Any]) -> str:
         return 'title'
     return 'none'
 
+def process_file_pair(json_file, html_dir):
+    """Process a single JSON/HTML pair and return list of (features, label) tuples."""
+    features_labels = []
+    base = json_file.stem
+    html_file = html_dir / f"{base}.html"
+    if not html_file.exists():
+        return features_labels  # empty
+
+    try:
+        label_data = json.loads(json_file.read_text(encoding="utf-8"))
+        html = html_file.read_text(encoding="utf-8")
+        elements = parse_html(html)
+
+        for idx, el in enumerate(elements):
+            elem_text = el.get("text", "").strip()
+            label = label_element(elem_text, label_data)
+            features = extract_features(el, elem_text, elements, idx)
+            features_labels.append((features, label))
+
+    except Exception as e:
+        print(f"⚠️ Error processing {json_file.name}: {e}")
+
+    return features_labels
+
 def load_labeled_blocks(labels_dir: Path, html_dir: Path, limit: int | None = None) -> tuple[list, list]:
     """
-    Load and parse labeled HTML blocks from files.
+    Load and parse labeled HTML blocks from files, parallelized.
 
-    Parameters
-    ----------
-    labels_dir : Path
-        Path to directory containing JSON label files.
-    html_dir : Path
-        Path to directory containing HTML files.
-    limit : int | None, optional
-        Optional maximum number of files to process.
-
-    Returns
-    -------
-    tuple[list, list]
-        (features_list, labels_list) containing the training data.
+    Returns (features_list, labels_list).
     """
     features_list, labels_list = [], []
     json_files = sorted(labels_dir.glob("recipe_*.json"))
     total = len(json_files)
 
     if limit:
-        total = min(total, limit)
+        json_files = json_files[:limit]
+    total = len(json_files)  # recalculate after applying limit
 
-    report_size = max(10, int(total / 100))  # Report every 1% of total files
+    report_size = max(10, int(total / 100))
 
-    for i, json_file in enumerate(json_files):
-        if limit and i >= limit:
-            break
+    # Use ProcessPoolExecutor for parallelism
+    with ProcessPoolExecutor() as executor:
+        # Submit all jobs
+        futures = {executor.submit(process_file_pair, json_file, html_dir): json_file for json_file in json_files}
 
-        base = json_file.stem
-        html_file = html_dir / f"{base}.html"
-        if not html_file.exists():
-            continue
+        # Collect results as they complete
+        for idx, future in enumerate(as_completed(futures)):
+            results = future.result()
+            for features, label in results:
+                features_list.append(features)
+                labels_list.append(label)
 
-        label_data = json.loads(json_file.read_text(encoding="utf-8"))
-        html = html_file.read_text(encoding="utf-8")
-        elements = parse_html(html)
-
-        for idx, el in  enumerate(elements):
-            elem_text = el.get("text", "").strip()
-
-            label = label_element(elem_text, label_data)
-
-            features = extract_features(el, elem_text, elements, idx)
-
-            features_list.append(features)
-            labels_list.append(label)
-
-        if (i + 1) % report_size == 0 or (i + 1) == total:
-            percent = ((i + 1) / total) * 100
-            print(f"📦 Processed {i + 1}/{total} files ({percent:.1f}%)")
+            if (idx + 1) % report_size == 0 or (idx + 1) == total:
+                percent = ((idx + 1) / total) * 100
+                print(f"📦 Processed {idx + 1}/{total} files ({percent:.1f}%)")
 
     return features_list, labels_list
 
