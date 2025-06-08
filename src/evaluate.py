@@ -1,11 +1,6 @@
 # evaluate.py
 # Evaluate the trained HTML block classifier against labeled JSON + HTML pairs
 
-from pathlib import Path
-from typing import List, Tuple, Dict, Any, Union
-
-import json
-import pandas as pd
 from sklearn.metrics import classification_report
 from sklearn.pipeline import make_pipeline
 from sklearn.linear_model import LogisticRegression

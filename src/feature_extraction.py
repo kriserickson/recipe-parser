@@ -43,7 +43,7 @@ def label_element(text: str, label_data: Dict[str, Any]) -> str:
     ----------
     text : str
         The text block to be labeled.
-    label_data : dict
+    label_data : Dict[str, Any]
         Dictionary containing recipe data with keys 'ingredients', 'directions', 'title'.
 
     Returns
@@ -66,13 +66,19 @@ def load_labeled_blocks(labels_dir: Path, html_dir: Path, limit: int | None = No
     """
     Load and parse labeled HTML blocks from files.
 
-    Args:
-        labels_dir: Path to directory containing JSON label files
-        html_dir: Path to directory containing HTML files
-        limit: Optional maximum number of files to process
+    Parameters
+    ----------
+    labels_dir : Path
+        Path to directory containing JSON label files.
+    html_dir : Path
+        Path to directory containing HTML files.
+    limit : int | None, optional
+        Optional maximum number of files to process.
 
-    Returns:
-        tuple: (features_list, labels_list) containing the training data
+    Returns
+    -------
+    tuple[list, list]
+        (features_list, labels_list) containing the training data.
     """
     features_list, labels_list = [], []
     json_files = sorted(labels_dir.glob("recipe_*.json"))
@@ -112,27 +118,107 @@ def load_labeled_blocks(labels_dir: Path, html_dir: Path, limit: int | None = No
 
     return features_list, labels_list
 
+def find_nearest_section_heading(elements, idx):
+    """
+    Returns one of 'ingredient', 'direction', 'title', or None based on the nearest heading tag above the element.
+    """
+    for i in range(idx - 1, -1, -1):
+        tag = elements[i].get("tag", "").lower()
+        text = elements[i].get("text", "").strip().lower()
+        if tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+            if any(k in text for k in ing_keywords):
+                return "ingredient"
+            if any(k in text for k in dir_keywords):
+                return "direction"
+            if any(k in text for k in title_keywords):
+                return "title"
+            return None
+    return None
 
-def extract_features(el, elem_text, elements, idx):
-    features = {}
-    # Tag features
-    features["tag"] = el.get("tag", "None")
-    features["depth"] = el.get("depth", 0)
-    # Parent tag (if available)
-    features["parent_tag"] = el.get("parent_tag", "None")
-    # Position in document
-    features["block_index"] = idx
-    features["position_ratio"] = idx / max(1, len(elements) - 1)
-    # Text-based features
-    features["text"] = elem_text  # Keep for vectorizer
-    features["text_length"] = len(elem_text)
-    features["num_digits"] = sum(ch.isdigit() for ch in elem_text)
-    features["starts_with_number"] = 1 if re.match(r"^\\d", elem_text) else 0
+
+def compute_distance_to_nearest_heading(
+    elements: list[dict], idx: int, heading_tags: tuple = ("h1", "h2", "h3", "h4", "h5", "h6")
+) -> int:
+    """
+    Compute the distance from the current element to the nearest heading element.
+
+    Parameters
+    ----------
+    elements : list[dict]
+        List of parsed HTML elements.
+    idx : int
+        Index of the current element.
+    heading_tags : tuple, optional
+        Tuple of heading tag names to consider.
+
+    Returns
+    -------
+    int
+        Distance to the nearest heading element, or 9999 if none found.
+    """
+    # Search backward
+    backward_dist = None
+    for i in range(idx - 1, -1, -1):
+        tag = elements[i].get("tag", "").lower()
+        if tag in heading_tags:
+            backward_dist = idx - i
+            break
+
+    # Search forward
+    forward_dist = None
+    for i in range(idx + 1, len(elements)):
+        tag = elements[i].get("tag", "").lower()
+        if tag in heading_tags:
+            forward_dist = i - idx
+            break
+
+    distances = [d for d in [backward_dist, forward_dist] if d is not None]
+    if not distances:
+        return 9999  # no heading found nearby
+    return min(distances)
+
+
+def extract_features(
+    el: dict, elem_text: str, elements: list[dict], idx: int
+) -> dict[str, Any]:
+    """
+    Extract features from a single HTML element for ML models.
+
+    Parameters
+    ----------
+    el : dict
+        The HTML element dictionary.
+    elem_text : str
+        The text content of the element.
+    elements : list[dict]
+        List of all parsed HTML elements.
+    idx : int
+        Index of the current element in the list.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary of extracted features for the element.
+    """
     elem_text_lower = elem_text.lower()
-    features["contains_unit"] = int(
-        any(re.search(r'\\b' + re.escape(unit) + r'\\b', elem_text_lower) for unit in units))
-    features["comma_count"] = elem_text.count(",")
-    features["dot_count"] = elem_text.count(".")
+    features: dict[str, Any] = {
+        "tag": el.get("tag", "None"),
+        "depth": el.get("depth", 0),
+        "parent_tag": el.get("parent_tag", "None"),
+        "block_index": idx,
+        "position_ratio": idx / max(1, len(elements) - 1),
+        "text": elem_text,
+        "text_length": len(elem_text),
+        "num_digits": sum(ch.isdigit() for ch in elem_text),
+        "starts_with_number": int(bool(re.match(r"^\d", elem_text))),
+        "contains_unit": int(any(re.search(r"\b" + re.escape(unit) + r"\b", elem_text_lower) for unit in units)),
+        "comma_count": elem_text.count(","),
+        "dot_count": elem_text.count("."),
+        "is_heading": int(el.get("tag", "").lower() in ["h1", "h2", "h3", "h4", "h5", "h6"]),
+        "is_list_item": int(el.get("tag", "").lower() == "li"),
+        "distance_to_nearest_heading": compute_distance_to_nearest_heading(elements, idx),
+    }
+
     # Class/id keywords
     class_id_str = " ".join(str(x) for x in el.get("class", [])) + " " + str(el.get("id", ""))
     class_id_str = class_id_str.lower()
@@ -140,6 +226,7 @@ def extract_features(el, elem_text, elements, idx):
     features["has_dir_keyword"] = int(any(k in class_id_str for k in dir_keywords))
     features["has_title_keyword"] = int(any(k in class_id_str for k in title_keywords))
     features["has_img_keyword"] = int(any(k in class_id_str for k in img_keywords))
+
     # Microdata
     itemprop = el.get("itemprop", "")
     itemprop = itemprop.lower() if itemprop else ""
@@ -147,6 +234,19 @@ def extract_features(el, elem_text, elements, idx):
     features["itemprop_ingredient"] = int(itemprop == "recipeingredient")
     features["itemprop_instructions"] = int(itemprop == "recipeinstructions")
     features["itemprop_image"] = int(itemprop == "image")
+
+    # Ancestor context
+    ancestor_classes = el.get("ancestor_classes", [])
+    ancestor_classes_flat = " ".join(ancestor_classes).lower()
+    features["ancestor_has_ingredient_keyword"] = int(any(k in ancestor_classes_flat for k in ing_keywords))
+    features["ancestor_has_direction_keyword"] = int(any(k in ancestor_classes_flat for k in dir_keywords))
+    features["ancestor_has_title_keyword"] = int(any(k in ancestor_classes_flat for k in title_keywords))
+
+    # Section context
+    nearest_section = find_nearest_section_heading(elements, idx)
+    features["is_under_ingredient_section"] = int(nearest_section == "ingredient")
+    features["is_under_direction_section"] = int(nearest_section == "direction")
+
     return features
 
 
@@ -157,8 +257,7 @@ def build_feature_pipeline() -> Pipeline:
     Returns
     -------
     Pipeline
-        Scikit-learn pipeline with TF-IDF vectorizer
-
+        Scikit-learn pipeline with DictVectorizer and LogisticRegression.
     """
     return Pipeline([
         ('dict_vect', DictVectorizer(sparse=True)),
@@ -169,10 +268,14 @@ def is_valid_feature(feature: Dict[str, Any]) -> bool:
     """
     Check if a feature dict is valid for training.
 
-    Args:
-        feature: Feature dictionary.
+    Parameters
+    ----------
+    feature : Dict[str, Any]
+        Feature dictionary.
 
-    Returns:
+    Returns
+    -------
+    bool
         True if valid, False otherwise.
     """
     required_keys = [
@@ -196,12 +299,17 @@ def filter_valid_features(
     Build a scikit-learn Pipeline for structured feature processing.
     Filter out invalid feature dicts and their corresponding labels.
 
-    Args:
-        features: List of feature dicts.
-        labels: List of labels.
+    Parameters
+    ----------
+    features : List[Dict[str, Any]]
+        List of feature dicts.
+    labels : List[str]
+        List of labels.
 
-    Returns:
-         Scikit-learn pipeline with DictVectorizer and LogisticRegression.
+    Returns
+    -------
+    Tuple[List[Dict[str, Any]], List[str]]
+        Filtered features and labels.
     """
     valid_indices = [i for i, feat in enumerate(features) if is_valid_feature(feat)]
     filtered_features = [features[i] for i in valid_indices]

@@ -203,5 +203,4 @@ def train(limit: int | None = None, batch_size: int = 10000, use_nlp_features: b
 
 
 if __name__ == "__main__":
-    print("\n--- Training WITH NLP features (TF-IDF on text) ---")
-    train(use_nlp_features=True)
+    train(limit=1000, use_nlp_features=True)

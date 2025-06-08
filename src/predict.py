@@ -9,7 +9,7 @@ import json
 import sys
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from joblib import load
 
@@ -24,7 +24,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def split_features_and_text(features):
+def split_features_and_text(features: list[dict]) -> Tuple[list[dict], list[str]]:
+    """
+    Split a list of feature dicts into two lists: one without the 'text' field, and one with just the text values.
+
+    Parameters
+    ----------
+    features : list[dict]
+        List of feature dictionaries, each containing a 'text' key.
+
+    Returns
+    -------
+    Tuple[list[dict], list[str]]
+        Tuple of (features without text, list of text values).
+    """
     features_wo_text = []
     texts = []
     for feat in features:
@@ -34,7 +47,22 @@ def split_features_and_text(features):
         features_wo_text.append(f)
     return features_wo_text, texts
 
-def preprocess_data(features, use_nlp_features):
+def preprocess_data(features: list[dict], use_nlp_features: bool) -> Any:
+    """
+    Preprocess features for model prediction, optionally including NLP features.
+
+    Parameters
+    ----------
+    features : list[dict]
+        List of feature dictionaries.
+    use_nlp_features : bool
+        Whether to include NLP/text features in the output.
+
+    Returns
+    -------
+    Any
+        Preprocessed features, either as a list of dicts or list of (dict, text) tuples.
+    """
     if use_nlp_features:
         features_wo_text, texts = split_features_and_text(features)
         return list(zip(features_wo_text, texts))
@@ -49,12 +77,17 @@ from sklearn.base import BaseEstimator, TransformerMixin
 class ItemSelector(BaseEstimator, TransformerMixin):
     """
     For FeatureUnion to extract a specific item from a tuple or dict in the pipeline.
+
+    Parameters
+    ----------
+    key : str
+        The key to select ('structured' or 'text').
     """
-    def __init__(self, key):
+    def __init__(self, key: str):
         self.key = key
-    def fit(self, X, y=None):
+    def fit(self, X: Any, y: Any = None) -> 'ItemSelector':
         return self
-    def transform(self, X):
+    def transform(self, X: Any) -> list:
         if self.key == 'structured':
             return [x[0] for x in X]  # structured features (dict)
         elif self.key == 'text':
@@ -64,7 +97,17 @@ class ItemSelector(BaseEstimator, TransformerMixin):
 
 def extract_structured_data(html_path: Path) -> Dict[str, Optional[List[str]]]:
     """
-    Extract structured recipe data from HTML file.
+    Extract structured recipe data from an HTML file using a trained model.
+
+    Parameters
+    ----------
+    html_path : Path
+        Path to the HTML file to process.
+
+    Returns
+    -------
+    Dict[str, Optional[List[str]]]
+        Dictionary with keys 'title', 'ingredients', and 'directions'.
     """
     try:
         html = html_path.read_text(encoding="utf-8")
@@ -114,6 +157,9 @@ def extract_structured_data(html_path: Path) -> Dict[str, Optional[List[str]]]:
     return structured
 
 def main() -> None:
+    """
+    Main entry point for the prediction script. Handles command-line arguments and runs extraction.
+    """
     if len(sys.argv) != 2:
         logger.error("Invalid number of arguments")
         print("Usage: python predict.py path/to/recipe.html")

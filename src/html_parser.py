@@ -15,6 +15,29 @@ EXCLUDED_TAGS: List[str] = [
     "nav", "link", "meta", "button"
 ]
 
+def get_ancestor_classes(element: Tag) -> list:
+    """
+    Traverse the ancestors of the given HTML element and collect their class and id attributes.
+
+    Parameters
+    ----------
+    element : Tag
+        The BeautifulSoup Tag element whose ancestors will be traversed.
+
+    Returns
+    -------
+    list
+        A list containing the class names and ids of all ancestor elements, starting from the immediate parent up to the root.
+    """
+    classes = []
+    parent = element.parent
+    while parent is not None and parent.name is not None:
+        classes.extend(parent.get("class", []) or [])
+        if parent.has_attr("id"):
+            classes.append(parent["id"])
+        parent = parent.parent
+    return classes
+
 def parse_html(html: str) -> List[Dict[str, Any]]:
     """
     Parse HTML content and extract text elements with metadata.
@@ -69,6 +92,7 @@ def parse_html(html: str) -> List[Dict[str, Any]]:
                     'itemprop': element.get('itemprop', ''),
                     'class': element.get('class', []),
                     'id': element.get('id', ''),
+                    'ancestor_classes': get_ancestor_classes(element)
                 })
             return  # Do not emit children of this <li>
         if element.name is not None:
@@ -85,6 +109,7 @@ def parse_html(html: str) -> List[Dict[str, Any]]:
                     'itemprop': element.parent.get('itemprop', '') if element.parent else '',
                     'class': element.parent.get('class', []) if element.parent else [],
                     'id': element.parent.get('id', '') if element.parent else '',
+                    'ancestor_classes': get_ancestor_classes(element)
                 })
 
     recurse(soup.body if soup.body else soup)
