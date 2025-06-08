@@ -24,30 +24,47 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def split_features_and_text(features):
+    features_wo_text = []
+    texts = []
+    for feat in features:
+        texts.append(feat['text'])
+        f = feat.copy()
+        del f['text']
+        features_wo_text.append(f)
+    return features_wo_text, texts
+
+def preprocess_data(features, use_nlp_features):
+    if use_nlp_features:
+        features_wo_text, texts = split_features_and_text(features)
+        return list(zip(features_wo_text, texts))
+    else:
+        features_wo_text, _ = split_features_and_text(features)
+        return features_wo_text
+
+# NOTE: Add this local version of ItemSelector to make sure model loading works
+# Otherwise joblib.load() cannot resolve ItemSelector if not imported in predict.py
+from sklearn.base import BaseEstimator, TransformerMixin
+
+class ItemSelector(BaseEstimator, TransformerMixin):
+    """
+    For FeatureUnion to extract a specific item from a tuple or dict in the pipeline.
+    """
+    def __init__(self, key):
+        self.key = key
+    def fit(self, X, y=None):
+        return self
+    def transform(self, X):
+        if self.key == 'structured':
+            return [x[0] for x in X]  # structured features (dict)
+        elif self.key == 'text':
+            return [x[1] for x in X]  # text field
+        else:
+            raise ValueError(f"Unknown key: {self.key}")
 
 def extract_structured_data(html_path: Path) -> Dict[str, Optional[List[str]]]:
     """
     Extract structured recipe data from HTML file.
-
-    Parameters
-    ----------
-    html_path : Path
-        Path to HTML file containing recipe
-
-    Returns
-    -------
-    Dict[str, Optional[List[str]]]
-        Dictionary containing structured recipe data with keys:
-        - 'title': Optional[str]
-        - 'ingredients': List[str]
-        - 'directions': List[str]
-
-    Raises
-    ------
-    FileNotFoundError
-        If HTML file doesn't exist
-    ValueError
-        If HTML content is invalid
     """
     try:
         html = html_path.read_text(encoding="utf-8")
@@ -57,12 +74,9 @@ def extract_structured_data(html_path: Path) -> Dict[str, Optional[List[str]]]:
 
     logger.info(f"Processing HTML file: {html_path}")
     elements = parse_html(html)
-    text_features = []
     all_features = []
-
     for idx, el in enumerate(elements):
         text_elem = el.get("text", "").strip()
-        text_features.append(text_elem)
         features = extract_features(el, text_elem, elements, idx)
         all_features.append(features)
 
@@ -72,9 +86,15 @@ def extract_structured_data(html_path: Path) -> Dict[str, Optional[List[str]]]:
         logger.error(f"Model file not found: {MODEL_PATH}")
         raise
 
-    # X_features = [str(f) for f in all_features]
+    # --- Detect if model expects nlp tuple ---
+    use_tuple = False
+    if hasattr(model, 'steps') and hasattr(model.steps[0][1], 'transformer_list'):
+        names = [name for name, _ in model.steps[0][1].transformer_list]
+        if 'text' in names and 'structured' in names:
+            use_tuple = True
 
-    predictions = model.predict(all_features)
+    features_proc = preprocess_data(all_features, use_nlp_features=use_tuple)
+    predictions = model.predict(features_proc)
 
     structured: Dict[str, Optional[List[str]]] = {
         "title": None,
@@ -93,13 +113,7 @@ def extract_structured_data(html_path: Path) -> Dict[str, Optional[List[str]]]:
     logger.info("Successfully extracted structured data")
     return structured
 
-
 def main() -> None:
-    """
-    Main entry point for the recipe prediction script.
-    
-    Usage: python predict.py path/to/recipe.html
-    """
     if len(sys.argv) != 2:
         logger.error("Invalid number of arguments")
         print("Usage: python predict.py path/to/recipe.html")
@@ -112,7 +126,5 @@ def main() -> None:
         logger.error(f"Error processing recipe: {e}")
         sys.exit(1)
 
-
 if __name__ == "__main__":
     main()
-
