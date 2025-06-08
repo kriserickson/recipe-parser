@@ -38,16 +38,11 @@ def split_features_and_text(features):
         features_wo_text.append(f)
     return features_wo_text, texts
 
-
-def preprocess_data(features, use_nlp_features):
-    if use_nlp_features:
-        features_wo_text, texts = split_features_and_text(features)
-        # FeatureUnion requires parallel lists, passed as tuples
-        combined = list(zip(features_wo_text, texts))
-        return combined
-    else:
-        features_wo_text, _ = split_features_and_text(features)
-        return features_wo_text
+def preprocess_data(features):
+    features_wo_text, texts = split_features_and_text(features)
+    # FeatureUnion requires parallel lists, passed as tuples
+    combined = list(zip(features_wo_text, texts))
+    return combined
 
 def validate_data(features: list | np.ndarray, labels: list | np.ndarray) -> None:
     """
@@ -135,16 +130,12 @@ class ItemSelector(BaseEstimator, TransformerMixin):
         else:
             raise ValueError(f"Unknown key: {self.key}")
 
-def build_pipeline(use_nlp_features: bool):
+def build_pipeline():
     dict_vect = DictVectorizer(sparse=True)
-    if use_nlp_features:
-        transformer = FeatureUnion([
-            ("structured", make_pipeline(ItemSelector('structured'), dict_vect)),
-            ("text", make_pipeline(ItemSelector('text'), TfidfVectorizer(max_features=500, ngram_range=(1, 2))))
-        ])
-    else:
-        transformer = dict_vect
-
+    transformer = FeatureUnion([
+        ("structured", make_pipeline(ItemSelector('structured'), dict_vect)),
+        ("text", make_pipeline(ItemSelector('text'), TfidfVectorizer(max_features=500, ngram_range=(1, 2))))
+    ])
     pipeline = make_pipeline(
         transformer,
         RandomForestClassifier(
@@ -155,7 +146,7 @@ def build_pipeline(use_nlp_features: bool):
     )
     return pipeline
 
-def train(limit: int | None = None, batch_size: int = 10000, use_nlp_features: bool = False) -> None:
+def train(limit: int | None = None) -> None:
     start_time = time.time()
     print("🔄 Loading labeled data...")
     x_raw, y = load_labeled_blocks(LABEL_DIR, HTML_DIR, limit=limit)
@@ -181,12 +172,12 @@ def train(limit: int | None = None, batch_size: int = 10000, use_nlp_features: b
 
     validate_data(x_train_bal, y_train_bal)
 
-    print(f"🧠 Preprocessing data (use_nlp_features={use_nlp_features})...")
-    x_train_proc = preprocess_data(x_train_bal, use_nlp_features)
-    x_test_proc = preprocess_data(x_test, use_nlp_features)
+    print(f"🧠 Preprocessing data...")
+    x_train_proc = preprocess_data(x_train_bal)
+    x_test_proc = preprocess_data(x_test)
 
     print("🧠 Building model pipeline...")
-    model = build_pipeline(use_nlp_features)
+    model = build_pipeline()
 
     print("🧠 Training model...")
     # No more batch training—fit all at once for pipeline compatibility
@@ -201,6 +192,5 @@ def train(limit: int | None = None, batch_size: int = 10000, use_nlp_features: b
     print(f"⏱️ Total time: {time.time() - start_time:.2f}s")
 
 
-
 if __name__ == "__main__":
-    train(limit=1000, use_nlp_features=True)
+    train(limit=None)
