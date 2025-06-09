@@ -63,8 +63,22 @@ def label_element(text: str, label_data: Dict[str, Any]) -> str:
         return 'title'
     return 'none'
 
-def process_file_pair(json_file, html_dir):
-    """Process a single JSON/HTML pair and return list of (features, label) tuples."""
+def process_file_pair(json_file: Path, html_dir: Path) -> list[tuple[dict, str]]:
+    """
+    Process a single JSON/HTML file pair and extract features and labels for each HTML element.
+
+    Parameters
+    ----------
+    json_file : Path
+        Path to the JSON file containing recipe labels.
+    html_dir : Path
+        Directory containing the corresponding HTML file.
+
+    Returns
+    -------
+    list[tuple[dict, str]]
+        A list of (features, label) tuples for each element in the HTML file.
+    """
     features_labels = []
     base = json_file.stem
     html_file = html_dir / f"{base}.html"
@@ -77,9 +91,23 @@ def process_file_pair(json_file, html_dir):
         elements = parse_html(html)
 
         for idx, el in enumerate(elements):
+            tag = el.get("tag", "").lower()
             elem_text = el.get("text", "").strip()
+
+            section_heading_text = None
+            # If this element is a heading → update current section
+            if tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+                if any(k in elem_text.lower() for k in ing_keywords):
+                    section_heading_text = "ingredient"
+                elif any(k in elem_text.lower() for k in dir_keywords):
+                    section_heading_text = "direction"
+                elif any(k in elem_text.lower() for k in title_keywords):
+                    section_heading_text = "title"
+                else:
+                    section_heading_text = None  # unknown heading
+
             label = label_element(elem_text, label_data)
-            features = extract_features(el, elem_text, elements, idx)
+            features = extract_features(el, elem_text, elements, idx, current_section_heading = section_heading_text)
             features_labels.append((features, label))
 
     except Exception as e:
@@ -89,9 +117,26 @@ def process_file_pair(json_file, html_dir):
 
 def load_labeled_blocks(labels_dir: Path, html_dir: Path, limit: int | None = None) -> tuple[list, list]:
     """
-    Load and parse labeled HTML blocks from files, parallelized.
+    Load and parse labeled HTML blocks from files in parallel.
 
-    Returns (features_list, labels_list).
+    This function reads JSON label files and their corresponding HTML files, extracts features and labels for each HTML element,
+    and returns two lists: one of feature dicts and one of labels. Processing is parallelized for efficiency.
+
+    Parameters
+    ----------
+    labels_dir : Path
+        Path to the directory containing JSON label files (one per recipe).
+    html_dir : Path
+        Path to the directory containing HTML files (one per recipe).
+    limit : int | None, optional
+        Optional maximum number of files to process. If None, all files are processed.
+
+    Returns
+    -------
+    tuple[list, list]
+        A tuple (features_list, labels_list) where:
+            - features_list: list of feature dicts for all elements in all recipes
+            - labels_list: list of corresponding labels for each element
     """
     features_list, labels_list = [], []
     json_files = sorted(labels_dir.glob("recipe_*.json"))
@@ -121,9 +166,21 @@ def load_labeled_blocks(labels_dir: Path, html_dir: Path, limit: int | None = No
 
     return features_list, labels_list
 
-def find_nearest_section_heading(elements, idx):
+def find_nearest_section_heading(elements: list[dict], idx: int) -> str | None:
     """
-    Returns one of 'ingredient', 'direction', 'title', or None based on the nearest heading tag above the element.
+    Find the nearest section heading above the given element index.
+
+    Parameters
+    ----------
+    elements : list[dict]
+        List of parsed HTML elements, each as a dictionary.
+    idx : int
+        Index of the current element in the elements list.
+
+    Returns
+    -------
+    str or None
+        Returns 'ingredient', 'direction', 'title', or None based on the nearest heading tag above the element.
     """
     for i in range(idx - 1, -1, -1):
         tag = elements[i].get("tag", "").lower()
@@ -182,7 +239,7 @@ def compute_distance_to_nearest_heading(
 
 
 def extract_features(
-    el: dict, elem_text: str, elements: list[dict], idx: int
+    el: dict, elem_text: str, elements: list[dict], idx: int, current_section_heading: str=None
 ) -> dict[str, Any]:
     """
     Extract features from a single HTML element for ML models.
@@ -214,12 +271,16 @@ def extract_features(
         "text_length": len(elem_text),
         "num_digits": sum(ch.isdigit() for ch in elem_text),
         "starts_with_number": int(bool(re.match(r"^\d", elem_text))),
+        "contains_quantity_number": int(bool(re.search(r"\d+|\d+/\d+|½|¼|¾|⅓|⅔|\bone\b|\btwo\b|\bthree\b|\bfour\b|\bfive\b", elem_text))),
         "contains_unit": int(any(re.search(r"\b" + re.escape(unit) + r"\b", elem_text_lower) for unit in units)),
         "comma_count": elem_text.count(","),
         "dot_count": elem_text.count("."),
         "is_heading": int(el.get("tag", "").lower() in ["h1", "h2", "h3", "h4", "h5", "h6"]),
         "is_list_item": int(el.get("tag", "").lower() == "li"),
         "distance_to_nearest_heading": compute_distance_to_nearest_heading(elements, idx),
+        "is_under_current_ingredient_section": int(current_section_heading == "ingredient"),
+        "is_under_current_direction_section": int(current_section_heading == "direction"),
+        "is_under_current_title_section": int(current_section_heading == "title")
     }
 
     # Class/id keywords
@@ -249,6 +310,12 @@ def extract_features(
     nearest_section = find_nearest_section_heading(elements, idx)
     features["is_under_ingredient_section"] = int(nearest_section == "ingredient")
     features["is_under_direction_section"] = int(nearest_section == "direction")
+
+    # Title Hueristics
+    features["is_possible_title_heading"] = int(el.get("tag", "").lower() in ["h1", "h2", "h3"])
+    features["is_possible_title_short"] = int(len(elem_text.split()) <= 8)
+    features["is_first_5_blocks"] = int(idx < 5)
+    features["is_first_10_blocks"] = int(idx < 10)
 
     return features
 

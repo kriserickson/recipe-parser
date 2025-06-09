@@ -8,6 +8,7 @@ from raw HTML recipe pages using a trained model.
 import json
 import sys
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -16,6 +17,7 @@ from joblib import load
 from html_parser import parse_html
 from config import MODEL_PATH
 from feature_extraction import extract_features
+from sklearn.base import BaseEstimator, TransformerMixin
 
 # Configure logging
 logging.basicConfig(
@@ -47,6 +49,62 @@ def split_features_and_text(features: list[dict]) -> Tuple[list[dict], list[str]
         features_wo_text.append(f)
     return features_wo_text, texts
 
+def clean_prediction(text: str, label: str) -> bool:
+    """
+    Determine if a predicted text block should be included in the structured output.
+
+    This function applies a set of heuristics to filter out noisy, irrelevant, or misclassified predictions
+    for recipe titles, ingredients, and directions. It is used to post-process model predictions before
+    returning them to the user.
+
+    Parameters
+    ----------
+    text : str
+        The text content of the predicted block.
+    label : str
+        The predicted label for the block (e.g., 'title', 'ingredient', 'direction').
+
+    Returns
+    -------
+    bool
+        True if the prediction should be included in the output, False if it should be filtered out.
+    """
+    text_lower = text.lower().strip()
+
+    # Skip empty or too short
+    if not text or len(text) < 3:
+        return False
+
+    # Global stopwords for both directions and ingredients
+    global_blocklist = {
+        "by", "news", "trends", "or", "and", "text ingredients", "sponsored", "advertisement"
+    }
+
+    if text_lower in global_blocklist:
+        return False
+
+    # Ingredient-specific cleanup
+    if label == "ingredient":
+        # Reject headings accidentally classified as ingredients
+        if re.fullmatch(r"(ingredients|yield|nutrition|directions|preparation|prep time|cook time|total time|servings)", text_lower):
+            return False
+        # Reject single words (likely noise)
+        if len(text.split()) < 2:
+            return False
+
+    # Direction-specific cleanup
+    if label == "direction":
+        if re.fullmatch(r"(ingredients|yield|nutrition|prep time|cook time|total time|servings)", text_lower):
+            return False
+        # Reject single words
+        if len(text.split()) < 3:
+            return False
+
+    # Title is tricky — don't filter aggressively
+    # You can add special rules here if desired
+
+    return True
+
 def preprocess_data(features: list[dict], use_nlp_features: bool) -> Any:
     """
     Preprocess features for model prediction, optionally including NLP features.
@@ -72,7 +130,6 @@ def preprocess_data(features: list[dict], use_nlp_features: bool) -> Any:
 
 # NOTE: Add this local version of ItemSelector to make sure model loading works
 # Otherwise joblib.load() cannot resolve ItemSelector if not imported in predict.py
-from sklearn.base import BaseEstimator, TransformerMixin
 
 class ItemSelector(BaseEstimator, TransformerMixin):
     """
@@ -146,12 +203,17 @@ def extract_structured_data(html_path: Path) -> Dict[str, Optional[List[str]]]:
     }
 
     for el, label in zip(elements, predictions):
+
+        text = el["text"].strip()
+        if not clean_prediction(text, label):
+            continue
+
         if label == "title" and structured["title"] is None:
-            structured["title"] = el["text"]
+            structured["title"] = text
         elif label == "ingredient":
-            structured["ingredients"].append(el["text"])
+            structured["ingredients"].append(text)
         elif label == "direction":
-            structured["directions"].append(el["text"])
+            structured["directions"].append(text)
 
     logger.info("Successfully extracted structured data")
     return structured
