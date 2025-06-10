@@ -6,26 +6,24 @@ into recipe components (ingredients, directions, title, etc.) using
 supervised learning.
 """
 
-import gc
 import logging
 import time
 from typing import List, Dict, Any, Generator
 
 import numpy as np
-import pandas as pd
 from joblib import dump
-from sklearn.feature_extraction import DictVectorizer
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import make_pipeline
-from sklearn.utils import resample
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import FeatureUnion
+from sklearn.pipeline import make_pipeline
 
 from config import HTML_DIR, LABEL_DIR, MODEL_PATH
 from feature_extraction import (filter_valid_features, load_labeled_blocks)
+
 
 def split_features_and_text(features):
     """Splits features into (dicts without 'text', texts)."""

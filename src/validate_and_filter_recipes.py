@@ -3,6 +3,7 @@ import sys
 import time
 from collections import deque
 from pathlib import Path
+from typing import Any, Dict, Tuple
 
 import requests
 import tldextract
@@ -49,12 +50,28 @@ else:
 last_domain_access = {}
 
 
-def save_state():
+def save_state() -> None:
+    """
+    Save the current processing state and Selenium whitelist to the state file.
+    """
     processing_state["selenium_whitelist"] = sorted(SELENIUM_WHITELIST)
     STATE_FILE.write_text(json.dumps(processing_state, indent=2), encoding="utf-8")
 
 
-def throttle_domain(domain):
+def throttle_domain(domain: str) -> bool:
+    """
+    Throttle requests to a domain to avoid hitting rate limits.
+
+    Parameters
+    ----------
+    domain : str
+        The domain to check for throttling.
+
+    Returns
+    -------
+    bool
+        True if the domain is ready for a new request, False if it should be throttled.
+    """
     now = time.time()
     last_time = last_domain_access.get(domain, 0)
     wait = THROTTLE_DELAY - (now - last_time)
@@ -64,7 +81,22 @@ def throttle_domain(domain):
     return True
 
 
-def is_valid_page(html, data):
+def is_valid_page(html: str, data: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Validate that the HTML page contains the expected recipe content.
+
+    Parameters
+    ----------
+    html : str
+        The HTML content of the page.
+    data : Dict[str, Any]
+        The expected recipe data (title, ingredients, directions).
+
+    Returns
+    -------
+    Tuple[bool, str]
+        (True, '') if valid, otherwise (False, reason for failure).
+    """
     soup = BeautifulSoup(html, "html.parser")
     text = soup.get_text(separator=" ").lower()
 
@@ -89,7 +121,20 @@ def is_valid_page(html, data):
 
     return title_ok or (ingredients_ok or directions_ok), ", ".join(reasons)
 
-def fetch_with_requests(href):
+def fetch_with_requests(href: str) -> str:
+    """
+    Fetch HTML content from a URL using the requests library.
+
+    Parameters
+    ----------
+    href : str
+        The URL to fetch.
+
+    Returns
+    -------
+    str
+        The HTML content as a string, or an error message if the request fails.
+    """
     try:
         resp = requests.get(href, headers=HEADERS, timeout=15)
         if resp.status_code == 200 and "text/html" in resp.headers.get("Content-Type", ""):
@@ -99,7 +144,20 @@ def fetch_with_requests(href):
         return f"RequestException: {e}"
 
 
-def fetch_with_selenium(href):
+def fetch_with_selenium(href: str) -> str:
+    """
+    Fetch HTML content from a URL using Selenium WebDriver.
+
+    Parameters
+    ----------
+    href : str
+        The URL to fetch.
+
+    Returns
+    -------
+    str
+        The HTML content as a string, or an error message if Selenium fails.
+    """
     try:
         options = Options()
         options.headless = True
@@ -118,7 +176,20 @@ def fetch_with_selenium(href):
         return f"SeleniumException: {e}"
 
 
-def process_file(json_path):
+def process_file(json_path: Path) -> bool:
+    """
+    Process a single potential label JSON file: fetch the HTML, validate, and save if valid.
+
+    Parameters
+    ----------
+    json_path : Path
+        Path to the JSON file containing potential recipe labels and metadata.
+
+    Returns
+    -------
+    bool
+        True if the file was processed (success or permanent failure), False if it should be retried later.
+    """
     if json_path.name in processing_state["processed_files"]:
         print(f"⏩ Already processed: {json_path.name}")
         return True
@@ -181,7 +252,11 @@ def process_file(json_path):
     return True
 
 
-def main():
+def main() -> None:
+    """
+    Main entry point for validating and filtering recipe pages.
+    Iterates through potential label files, processes each, and saves state after each attempt.
+    """
     json_files = deque(sorted(POTENTIAL_LABELS_DIR.glob("recipe_*.json")))
     while json_files:
         json_file = json_files.popleft()

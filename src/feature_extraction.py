@@ -5,18 +5,18 @@ This module provides functions to extract features from HTML elements
 and build feature processing pipelines for machine learning models.
 """
 
-from typing import List, Dict, Any, Union
-
-from sklearn.feature_extraction import DictVectorizer
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression
-
-from pathlib import Path
-from typing import Dict, Any, Tuple
 import json
 import re
-from html_parser import parse_html
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+from typing import Dict, Any, Tuple
+from typing import List
+
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+
+from html_parser import parse_html
 
 # Constants
 MAX_FEATURES: int = 1000
