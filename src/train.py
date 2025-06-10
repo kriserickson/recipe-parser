@@ -82,37 +82,98 @@ def batch_generator(
         yield features[i:i + batch_size], labels[i:i + batch_size]
 
 
+def balance_training_data(
+    x_train: list,
+    y_train: list,
+    *,
+    ratio_none_to_minor: int = 3,
+    min_target_per_class: int = 1_000,
+    random_state: int = 42,
+):
+    """
+    • Keeps all minority-class rows.
+    • Down-samples 'none' so:   len(none) <= ratio_none_to_minor * len(all minorities)
+    • Up-samples a minority class if it has < min_target_per_class rows.
+    Prints for each class: upsampled/downsampled/unchanged.
+    """
+    import pandas as pd
+    from sklearn.utils import resample
 
-def balance_training_data(x_train, y_train, max_samples_per_class=None):
-    # Put into DataFrame for easier manipulation
     df = pd.DataFrame(x_train)
-    df['label'] = y_train
+    df["label"] = y_train
 
-    # Find the size of the minority (non-none) classes
-    class_counts = df['label'].value_counts()
-    min_count = min(class_counts[class_counts.index != 'none'])
-    # Optionally, cap the max per class to save memory
-    n_samples = max_samples_per_class or min_count
+    counts = df["label"].value_counts().to_dict()
+    n_none = counts.get("none", 0)
+    n_minor = sum(v for k, v in counts.items() if k != "none")
 
-    # Downsample "none"
-    df_none = df[df['label'] == 'none']
-    df_none_down = resample(df_none, replace=False, n_samples=n_samples, random_state=42)
+    print("\n📊 raw class counts")
+    for k, v in counts.items():
+        print(f"  {k:<10}: {v}")
 
-    # Upsample each minority class to n_samples
+    # -- keep all minorities
+    df_minor = df[df["label"] != "none"].copy()
+
+    # -- none: downsample if needed
+    none_target = min(n_none, ratio_none_to_minor * len(df_minor))
+    action_none = "unchanged"
+    if none_target < n_none:
+        action_none = "downsampled"
+    elif none_target > n_none:
+        action_none = "upsampled"
+
+    df_none = df[df["label"] == "none"].copy()
+    df_none_down = resample(
+        df_none, replace=False, n_samples=none_target, random_state=random_state
+    )
+
+    print(f"  {'none':<10}: {n_none} → {none_target} ({action_none})")
+
+    # -- handle minorities
     frames = [df_none_down]
-    for label in class_counts.index:
-        if label == 'none': continue
-        df_label = df[df['label'] == label]
-        df_label_up = resample(df_label, replace=True, n_samples=n_samples, random_state=42)
-        frames.append(df_label_up)
+    for label, orig_count in counts.items():
+        if label == "none":
+            continue
 
-    # Concatenate and shuffle
-    df_bal = pd.concat(frames).sample(frac=1, random_state=42)
+        df_label = df_minor[df_minor["label"] == label]
+        new_count = orig_count
+        action = "unchanged"
+        # Upsample tiny minorities if needed
+        if orig_count < min_target_per_class:
+            df_label = resample(
+                df_label,
+                replace=True,
+                n_samples=min_target_per_class,
+                random_state=random_state,
+            )
+            new_count = min_target_per_class
+            action = "upsampled"
+        elif orig_count > min_target_per_class:
+            # Optionally downsample massive classes (rare for minorities, usually not needed)
+            # df_label = resample(
+            #     df_label,
+            #     replace=False,
+            #     n_samples=min_target_per_class,
+            #     random_state=random_state,
+            # )
+            # new_count = min_target_per_class
+            # action = "downsampled"
+            pass  # currently not downsampling minorities
 
-    # Return balanced x_train/y_train
-    y_train_bal = df_bal['label'].tolist()
-    x_train_bal = df_bal.drop('label', axis=1).to_dict(orient='records')
-    return x_train_bal, y_train_bal
+        frames.append(df_label)
+        print(f"  {label:<10}: {orig_count} → {new_count} ({action})")
+
+    # -- concat & shuffle
+    df_bal = pd.concat(frames).sample(frac=1, random_state=random_state)
+
+    print(f"\n🟢 Final balanced set: {len(df_bal)} rows "
+          f"( none={len(df_none_down)}, minorities={len(df_bal)-len(df_none_down)} )")
+
+    y_bal = df_bal["label"].tolist()
+    x_bal = df_bal.drop("label", axis=1).to_dict(orient="records")
+    return x_bal, y_bal
+
+
+
 
 class ItemSelector(BaseEstimator, TransformerMixin):
     """
@@ -193,4 +254,4 @@ def train(limit: int | None = None) -> None:
 
 
 if __name__ == "__main__":
-    train(limit=None)
+    train()
