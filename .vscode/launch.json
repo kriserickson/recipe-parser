@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "[]"
+        }
+        ,
+        {
+            "name": "Python Debugger: validate_and_filter_recipes",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/validate_and_filter_recipes.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {},
+            "args": []
+        }
+    ]
+}

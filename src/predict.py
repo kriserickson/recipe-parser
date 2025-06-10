@@ -5,11 +5,35 @@ from pathlib import Path
 from joblib import load
 import sys
 import json
+from typing import Tuple
 
 from html_parser import parse_html
 from feature_extraction import extract_features
 
 MODEL_PATH = Path("../models/model.joblib")
+
+def split_features_and_text(features: list[dict]) -> Tuple[list[dict], list[str]]:
+    """
+    Split a list of feature dicts into two lists: one without the 'text' field, and one with just the text values.
+
+    Parameters
+    ----------
+    features : list[dict]
+        List of feature dictionaries, each containing a 'text' key.
+
+    Returns
+    -------
+    Tuple[list[dict], list[str]]
+        Tuple of (features without text, list of text values).
+    """
+    features_wo_text = []
+    texts = []
+    for feat in features:
+        texts.append(feat['raw'])
+        f = feat.copy()
+        del f['raw']
+        features_wo_text.append(f)
+    return features_wo_text, texts
 
 
 def extract_structured_data(html_path):
@@ -17,8 +41,10 @@ def extract_structured_data(html_path):
     elements = parse_html(html)
     features = extract_features(elements)
 
+    features_wo_text, texts = split_features_and_text(features)
+
     model = load(MODEL_PATH)
-    predictions = model.predict(features)
+    predictions = model.predict(texts)
 
     structured = {"title": None, "ingredients": [], "directions": []}
     for el, label in zip(elements, predictions):
