@@ -8,36 +8,19 @@ import json
 from typing import Tuple
 
 from html_parser import parse_html
-from feature_extraction import extract_features
+from feature_extraction import extract_features, preprocess_data
 
 MODEL_PATH = Path("../models/model.joblib")
-
-def get_text(features: list[dict]) -> list[str]:
-    """
-    Extract just the raw text values from a list of feature dictionaries.
-
-    Parameters
-    ----------
-    features : list[dict]
-        List of feature dictionaries, each containing a 'raw' key.
-
-    Returns
-    -------
-    list[str]
-        List of raw text values.
-    """
-    return [feat['raw'] for feat in features]
-
 
 def extract_structured_data(html_path):
     html = Path(html_path).read_text(encoding="utf-8")
     elements = parse_html(html)
     features = extract_features(elements)
 
-    texts = get_text(features)
+    data = preprocess_data(features)
 
     model = load(MODEL_PATH)
-    predictions = model.predict(texts)
+    predictions = model.predict(data)
 
     structured = {"title": None, "ingredients": [], "directions": []}
     for el, label in zip(elements, predictions):

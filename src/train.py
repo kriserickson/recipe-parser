@@ -1,26 +1,46 @@
 # train.py
 # Train an HTML block classifier using labeled JSON and HTML pairs
 
-from sklearn.pipeline import make_pipeline
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-from joblib import dump
-
-from html_parser import parse_html
-from feature_extraction import extract_features, build_feature_pipeline
-
+# Standard library imports
 import json
+import logging
+import argparse
 from pathlib import Path
 from time import time
-import logging
+from typing import Dict, List, Tuple, Any
+
+# Third-party imports
 import numpy as np
+from joblib import dump
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+
+# Local/application imports
+from html_parser import parse_html
+from feature_extraction import extract_features, build_transformer, preprocess_data
 
 LABELS_DIR = Path("../data/labels")
 HTML_DIR = Path("../data/html_pages")
 MODEL_PATH = Path("../models/model.joblib")
 
-def label_element(text, label_data):
+def label_element(text: str, label_data: Dict[str, Any]) -> str:
+    """
+    Determine the label for a text element based on labeled data.
+
+    Parameters
+    ----------
+    text : str
+        The text content to be labeled.
+    label_data : Dict[str, Any]
+        Dictionary containing labeled data with keys: 'ingredients', 'directions', 'title'.
+
+    Returns
+    -------
+    str
+        Label for the text element: 'ingredient', 'direction', 'title', or 'none'.
+    """
     t = text.strip().lower()
     if not t or t.isdigit():
         return 'none'
@@ -32,7 +52,20 @@ def label_element(text, label_data):
         return 'title'
     return 'none'
 
-def load_labeled_blocks(limit=None):
+def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """
+    Load HTML blocks and their corresponding labels from JSON and HTML files.
+
+    Parameters
+    ----------
+    limit : Optional[int], default=None
+        Maximum number of elements to load, if specified.
+
+    Returns
+    -------
+    Tuple[List[Dict[str, Any]], List[str]]
+        A tuple containing features (X) and labels (y).
+    """
     X, y = [], []
     json_files = sorted(LABELS_DIR.glob("recipe_*.json"))
     total = len(json_files)
@@ -59,39 +92,66 @@ def load_labeled_blocks(limit=None):
             print(f"📦 Processed {i + 1}/{total} files ({percent:.1f}%)")
     return X, y
 
-def validate_data(X, y):
+def validate_data(X: List, y: List) -> None:
+    """
+    Validate that the features and labels arrays have the same length.
+
+    Parameters
+    ----------
+    X : List
+        List of features.
+    y : List
+        List of labels.
+
+    Raises
+    ------
+    ValueError
+        If X and y have different lengths.
+    """
     if len(X) != len(y):
         raise ValueError(f"X_train and y_train must have the same length. Got {len(X)} and {len(y)}")
 
-def train(limit: int | None = None):
+def train(limit: int | None = None) -> None:
+    """
+    Train and save a text classification model for recipe components.
+
+    This function loads labeled data, extracts features, trains a model,
+    evaluates its performance, and saves the model to disk.
+
+    Parameters
+    ----------
+    limit : Optional[int], default=None
+        Maximum number of elements to load for training.
+    """
     start = time()
-    print("🔄 Loading labeled data...")
+    print("Loading labeled data...")
     X_raw, y = load_labeled_blocks(limit=limit)
-    print(f"✅ Loaded {len(X_raw)} blocks.")
+    print(f"Loaded {len(X_raw)} blocks.")
 
     print("🔧 Extracting features...")
     X_features = extract_features(X_raw)  # Ensure X_features is a list of strings
 
-    print("🎯 Splitting train/test...")
+    print("Splitting train/test...")
     X_train, X_test, y_train, y_test = train_test_split(X_features, y, test_size=0.2, random_state=42)
-
-    y_train = np.array(y_train)
-    y_test = np.array(y_test)
 
     logging.basicConfig(level=logging.INFO)
 
     validate_data(X_train, y_train)
 
-    print("🧠 Training model...")
+    print("Preprocessing data...")
+    X_train_proc = preprocess_data(X_train)
+    X_test_proc = preprocess_data(X_test)
+
+    print("Training model...")
     model = make_pipeline(
-        build_feature_pipeline(),
+        build_transformer(),
         LogisticRegression(max_iter=1000, class_weight='balanced')
     )
 
-    model.fit(X_train, y_train)
+    model.fit(X_train_proc, y_train)
 
     print("📊 Evaluating...")
-    y_pred = model.predict(X_test)
+    y_pred = model.predict(X_test_proc)
     print(classification_report(y_test, y_pred))
 
     dump(model, MODEL_PATH)
@@ -99,5 +159,10 @@ def train(limit: int | None = None):
     print(f"⏱️ Total time: {time() - start:.2f}s")
 
 if __name__ == "__main__":
-    train(limit=None)
+    parser = argparse.ArgumentParser(description='Train a recipe component classifier.')
+    parser.add_argument('--limit', type=int, default=None,
+                        help='Maximum number of elements to load for training')
+    args = parser.parse_args()
+
+    train(limit=args.limit)
 

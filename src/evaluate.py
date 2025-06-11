@@ -7,7 +7,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
 from html_parser import parse_html
-from feature_extraction import extract_features, build_feature_pipeline
+from feature_extraction import extract_features, build_transformer
 
 import json
 from pathlib import Path
@@ -72,7 +72,7 @@ def evaluate():
 
     # Build model pipeline
     model = make_pipeline(
-        build_feature_pipeline(),
+        build_transformer(),
         LogisticRegression(max_iter=1000)
     )
     model.fit(X_train, y_train)
