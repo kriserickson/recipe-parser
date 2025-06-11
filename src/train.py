@@ -129,7 +129,7 @@ def train(limit: int | None = None) -> None:
     print(f"Loaded {len(X_raw)} blocks.")
 
     print("🔧 Extracting features...")
-    X_features = extract_features(X_raw)  # Ensure X_features is a list of strings
+    X_features = extract_features(X_raw)
 
     print("Splitting train/test...")
     X_train, X_test, y_train, y_test = train_test_split(X_features, y, test_size=0.2, random_state=42)
@@ -145,7 +145,7 @@ def train(limit: int | None = None) -> None:
     print("Training model...")
     model = make_pipeline(
         build_transformer(),
-        LogisticRegression(max_iter=1000, class_weight='balanced')
+        LogisticRegression(max_iter=5000, class_weight='balanced')
     )
 
     model.fit(X_train_proc, y_train)
