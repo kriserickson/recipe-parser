@@ -15,7 +15,6 @@ from pathlib import Path
 from time import time
 import logging
 import numpy as np
-import pandas as pd
 
 LABELS_DIR = Path("../data/labels")
 HTML_DIR = Path("../data/html_pages")
@@ -64,12 +63,6 @@ def validate_data(X, y):
     if len(X) != len(y):
         raise ValueError(f"X_train and y_train must have the same length. Got {len(X)} and {len(y)}")
 
-def extract_features(elements):
-    """
-    Convert raw HTML elements into text features for the model.
-    """
-    return [el["text"] for el in elements]  # Extract only the text field from each element
-
 def train(limit: int | None = None):
     start = time()
     print("🔄 Loading labeled data...")
@@ -106,5 +99,5 @@ def train(limit: int | None = None):
     print(f"⏱️ Total time: {time() - start:.2f}s")
 
 if __name__ == "__main__":
-    train(limit=1000)
+    train(limit=None)
 
