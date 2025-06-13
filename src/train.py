@@ -68,9 +68,9 @@ def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
     """
     X, y = [], []
     json_files = sorted(LABELS_DIR.glob("recipe_*.json"))
-    total = len(json_files)
+    total = min(limit, len(json_files))
     for i, json_file in enumerate(json_files):
-        if limit and len(X) >= limit:
+        if limit and i >= limit:
             break
 
         base = json_file.stem
@@ -150,13 +150,13 @@ def train(limit: int | None = None) -> None:
 
     model.fit(X_train_proc, y_train)
 
-    print("📊 Evaluating...")
+    print("Evaluating...")
     y_pred = model.predict(X_test_proc)
     print(classification_report(y_test, y_pred))
 
     dump(model, MODEL_PATH)
-    print(f"✅ Model saved to {MODEL_PATH}")
-    print(f"⏱️ Total time: {time() - start:.2f}s")
+    print(f"Model saved to {MODEL_PATH}")
+    print(f"️Total time: {time() - start:.2f}s")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a recipe component classifier.')
