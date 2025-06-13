@@ -16,6 +16,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 # Local/application imports
 from html_parser import parse_html
@@ -68,7 +69,7 @@ def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
     """
     X, y = [], []
     json_files = sorted(LABELS_DIR.glob("recipe_*.json"))
-    total = min(limit, len(json_files))
+    total = min(limit, len(json_files)) if limit is not None else len(json_files)
     for i, json_file in enumerate(json_files):
         if limit and i >= limit:
             break
@@ -89,7 +90,7 @@ def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
 
         if (i + 1) % 100 == 0 or (i + 1) == total:
             percent = ((i + 1) / total) * 100
-            print(f"📦 Processed {i + 1}/{total} files ({percent:.1f}%)")
+            print(f"Processed {i + 1}/{total} files ({percent:.1f}%)")
     return X, y
 
 def validate_data(X: List, y: List) -> None:
@@ -128,7 +129,7 @@ def train(limit: int | None = None) -> None:
     X_raw, y = load_labeled_blocks(limit=limit)
     print(f"Loaded {len(X_raw)} blocks.")
 
-    print("🔧 Extracting features...")
+    print("Extracting features...")
     X_features = extract_features(X_raw)
 
     print("Splitting train/test...")
@@ -145,6 +146,7 @@ def train(limit: int | None = None) -> None:
     print("Training model...")
     model = make_pipeline(
         build_transformer(),
+        StandardScaler(with_mean=False), # Add StandardScaler here
         LogisticRegression(max_iter=5000, class_weight='balanced')
     )
 
