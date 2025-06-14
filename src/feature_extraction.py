@@ -1,19 +1,45 @@
+from typing import Any, Dict, List, Tuple, Union
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline, FeatureUnion, make_pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 
-
-# This example assumes we extract raw text and tag type (e.g., <h1>, <li>, <p>) from HTML elements
 class ItemSelector(BaseEstimator, TransformerMixin):
     """
     For FeatureUnion to extract a specific item from a tuple or dict in the pipeline.
     """
-    def __init__(self, key):
+    def __init__(self, key: str):
+        """
+        Initialize the ItemSelector.
+
+        Args:
+            key (str): The key to select ('structured' or 'text').
+        """
         self.key = key
-    def fit(self, X, y=None):
+
+    def fit(self, X: List[Any], y: Any = None) -> 'ItemSelector':
+        """
+        Fit method (does nothing, present for compatibility).
+
+        Args:
+            X (List[Any]): Input data.
+            y (Any, optional): Target values (ignored).
+
+        Returns:
+            ItemSelector: self
+        """
         return self
-    def transform(self, X):
+
+    def transform(self, X: List[Tuple[Dict[str, Any], str]]) -> List[Union[Dict[str, Any], str]]:
+        """
+        Transform the input data by selecting the specified key.
+
+        Args:
+            X (List[Tuple[Dict[str, Any], str]]): Input data as list of tuples.
+
+        Returns:
+            List[Union[Dict[str, Any], str]]: Selected data based on key.
+        """
         if self.key == 'structured':
             return [x[0] for x in X]  # structured features (dict)
         elif self.key == 'text':
@@ -21,8 +47,16 @@ class ItemSelector(BaseEstimator, TransformerMixin):
         else:
             raise ValueError(f"Unknown key: {self.key}")
 
-def split_features_and_text(features):
-    """Splits features into (dicts without 'text', texts)."""
+def split_features_and_text(features: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """
+    Splits features into two lists: one with dicts (without 'raw'), and one with the 'raw' text.
+
+    Args:
+        features (List[Dict[str, Any]]): List of feature dictionaries.
+
+    Returns:
+        Tuple[List[Dict[str, Any]], List[str]]: Tuple of (features without 'raw', list of raw texts).
+    """
     features_wo_text = []
     texts = []
     for feat in features:
@@ -32,14 +66,32 @@ def split_features_and_text(features):
         features_wo_text.append(f)
     return features_wo_text, texts
 
-def preprocess_data(features):
+def preprocess_data(features: List[Dict[str, Any]]) -> List[Tuple[Dict[str, Any], str]]:
+    """
+    Prepares data for feature extraction by splitting and zipping features and texts.
+
+    Args:
+        features (List[Dict[str, Any]]): List of feature dictionaries.
+
+    Returns:
+        List[Tuple[Dict[str, Any], str]]: List of tuples (features, text).
+    """
     features_wo_text, texts = split_features_and_text(features)
     # FeatureUnion requires parallel lists, passed as tuples
     combined = list(zip(features_wo_text, texts))
     return combined
 
-def extract_features(elements):
-      return [
+def extract_features(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Extracts structured features from a list of elements.
+
+    Args:
+        elements (List[Dict[str, Any]]): List of elements, each with 'tag', 'depth', and 'text'.
+
+    Returns:
+        List[Dict[str, Any]]: List of feature dictionaries with extracted features.
+    """
+    return [
         {
             "tag": el["tag"],
             "depth": el["depth"],
@@ -52,7 +104,13 @@ def extract_features(elements):
         for el in elements
     ]
 
-def build_transformer():
+def build_transformer() -> FeatureUnion:
+    """
+    Builds a FeatureUnion transformer for structured and text features.
+
+    Returns:
+        FeatureUnion: A scikit-learn FeatureUnion object combining structured and text pipelines.
+    """
     dict_vect = DictVectorizer(sparse=True)
     transformer = FeatureUnion([
         ("structured", make_pipeline(ItemSelector('structured'), dict_vect)),
@@ -60,3 +118,4 @@ def build_transformer():
     ])
 
     return transformer
+

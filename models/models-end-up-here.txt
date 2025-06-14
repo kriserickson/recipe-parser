@@ -1,0 +1,2 @@
+This is the directory the models end up in after running ```python src/train.py```.
+This file exists so that the directory exists, otherwise the train script will be unhappy.

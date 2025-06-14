@@ -12,12 +12,13 @@ from feature_extraction import extract_features, build_transformer
 import json
 from pathlib import Path
 import pandas as pd
+from typing import Any, Dict, List, Tuple
 
 LABELS_DIR = Path("../data/labels")
 HTML_DIR = Path("../data/html_pages")
 
 
-def label_element(text, label_data):
+def label_element(text: str, label_data: Dict[str, Any]) -> str:
     """
     Given a block of text and JSON labels, determine its label.
     Return 'ingredient', 'direction', 'title', or 'none'.
@@ -34,7 +35,7 @@ def label_element(text, label_data):
     return 'none'
 
 
-def load_labeled_blocks():
+def load_labeled_blocks() -> Tuple[List[Dict[str, Any]], List[str]]:
     """
     Load all labeled HTML blocks with features and true labels
     """
@@ -56,7 +57,7 @@ def load_labeled_blocks():
     return X, y
 
 
-def evaluate():
+def evaluate() -> None:
     # Load labeled HTML text chunks and their true labels
     X_raw, y = load_labeled_blocks()
     X_features = extract_features(X_raw)

@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup, Comment
 
 
-def parse_html(html):
+def parse_html(html: str) -> list[dict[str, str]]:
     """
     Parses the HTML and returns a list of elements with metadata.
     Each element is a dict with keys like: 'text', 'tag', 'depth', etc.

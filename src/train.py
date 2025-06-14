@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-# Local/application imports
+# Local/application importst
 from html_parser import parse_html
 from feature_extraction import extract_features, build_transformer, preprocess_data
 
@@ -146,8 +146,8 @@ def train(limit: int | None = None) -> None:
     print("Training model...")
     model = make_pipeline(
         build_transformer(),
-        StandardScaler(with_mean=False), # Add StandardScaler here
-        LogisticRegression(max_iter=5000, class_weight='balanced')
+        StandardScaler(with_mean=False),
+        LogisticRegression(max_iter=1000, class_weight='balanced')
     )
 
     model.fit(X_train_proc, y_train)
