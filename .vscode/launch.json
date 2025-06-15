@@ -1,0 +1,42 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: train limit 1000",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/train.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": ["--limit", "1000"]
+        },
+        {
+            "name": "Python Debugger: train no limit",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/train.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": []
+        },
+      {
+            "name": "Python Debugger: predict ",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/predict.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": ["..\\data\\html\\crab-cakes.html"]
+        },
+        {
+            "name": "Python Debugger: validate_and_filter_recipes",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/validate_and_filter_recipes.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {},
+            "args": []
+        }
+    ]
+}

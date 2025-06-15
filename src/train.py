@@ -5,11 +5,11 @@ This module handles the training pipeline for classifying HTML blocks
 into recipe components (ingredients, directions, title, etc.) using
 supervised learning.
 """
+import argparse
 
-import gc
 import logging
 import time
-from typing import List, Dict, Any, Generator
+from typing import List, Dict, Any, Generator, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -27,7 +27,7 @@ from sklearn.pipeline import FeatureUnion
 from config import HTML_DIR, LABEL_DIR, MODEL_PATH
 from feature_extraction import (filter_valid_features, load_labeled_blocks)
 
-def split_features_and_text(features):
+def split_features_and_text(features: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Any]]:
     """Splits features into (dicts without 'text', texts)."""
     features_wo_text = []
     texts = []
@@ -83,7 +83,22 @@ def batch_generator(
 
 
 
-def balance_training_data(x_train, y_train, max_samples_per_class=None):
+def balance_training_data(
+    x_train: List[Dict[str, Any]],
+    y_train: List[str],
+    max_samples_per_class: Optional[int] = None
+) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """
+    Balance the training data by downsampling the majority class ('none') and upsampling minority classes.
+
+    Args:
+        x_train (List[Dict[str, Any]]): List of feature dictionaries for training samples.
+        y_train (List[str]): List of labels corresponding to x_train.
+        max_samples_per_class (Optional[int], optional): Maximum number of samples per class. If None, uses the size of the smallest non-'none' class.
+
+    Returns:
+        Tuple[List[Dict[str, Any]], List[str]]: Tuple containing balanced feature dicts and their corresponding labels.
+    """
     # Put into DataFrame for easier manipulation
     df = pd.DataFrame(x_train)
     df['label'] = y_train
@@ -162,35 +177,34 @@ def train(limit: int | None = None) -> None:
     y_test = np.array(y_test)
 
     logging.basicConfig(level=logging.INFO)
-    logging.info(f"X_train length: {len(x_train)}")
-    logging.info(f"y_train length: {len(y_train)}")
 
     x_train_bal, y_train_bal = balance_training_data(x_train, y_train)
 
-    logging.info(f"X_train length: {len(x_train_bal)}")
-    logging.info(f"y_train length: {len(y_train_bal)}")
-
     validate_data(x_train_bal, y_train_bal)
 
-    print(f"🧠 Preprocessing data...")
+    print("Preprocessing data...")
     x_train_proc = preprocess_data(x_train_bal)
     x_test_proc = preprocess_data(x_test)
 
-    print("🧠 Building model pipeline...")
+    print("Training model...")
     model = build_pipeline()
 
-    print("🧠 Training model...")
-    # No more batch training—fit all at once for pipeline compatibility
     model.fit(x_train_proc, y_train_bal)
 
-    print("📊 Evaluating...")
+    print("Evaluating...")
     y_pred = model.predict(x_test_proc)
     print(classification_report(y_test, y_pred, zero_division=0))
 
     dump(model, MODEL_PATH)
-    print(f"✅ Model saved to {MODEL_PATH}")
-    print(f"⏱️ Total time: {time.time() - start_time:.2f}s")
+    print(f"Model saved to {MODEL_PATH}")
+    print(f"Total time: {time.time() - start_time:.2f}s")
 
 
 if __name__ == "__main__":
-    train(limit=None)
+    parser = argparse.ArgumentParser(description='Train a recipe component classifier.')
+    parser.add_argument('--limit', type=int, default=None,
+                        help='Maximum number of elements to load for training')
+    args = parser.parse_args()
+
+    train(limit=args.limit)
+

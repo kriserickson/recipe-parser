@@ -101,7 +101,7 @@ def load_labeled_blocks(labels_dir: Path, html_dir: Path, limit: int | None = No
         json_files = json_files[:limit]
     total = len(json_files)  # recalculate after applying limit
 
-    report_size = max(10, int(total / 100))
+    report_size = min(10, int(total / 100))
 
     # Use ProcessPoolExecutor for parallelism
     with ProcessPoolExecutor() as executor:
@@ -117,7 +117,7 @@ def load_labeled_blocks(labels_dir: Path, html_dir: Path, limit: int | None = No
 
             if (idx + 1) % report_size == 0 or (idx + 1) == total:
                 percent = ((idx + 1) / total) * 100
-                print(f"📦 Processed {idx + 1}/{total} files ({percent:.1f}%)")
+                print(f"Processed {idx + 1}/{total} files ({percent:.1f}%)")
 
     return features_list, labels_list
 
