@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-# Local/application importst
+# Local/application imports
 from html_parser import parse_html
 from feature_extraction import extract_features, build_transformer, preprocess_data
 
