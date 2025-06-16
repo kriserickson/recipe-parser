@@ -147,7 +147,7 @@ def train(limit: int | None = None) -> None:
     model = make_pipeline(
         build_transformer(),
         StandardScaler(with_mean=False),
-        LogisticRegression(max_iter=1000, class_weight='balanced')
+        LogisticRegression(solver='lbfgs', max_iter=1000, class_weight='balanced')
     )
 
     model.fit(X_train_proc, y_train)
