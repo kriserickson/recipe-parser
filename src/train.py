@@ -67,6 +67,7 @@ def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
     Tuple[List[Dict[str, Any]], List[str]]
         A tuple containing features (X) and labels (y).
     """
+    start = time()
     X, y = [], []
     json_files = sorted(LABELS_DIR.glob("recipe_*.json"))
     total = min(limit, len(json_files)) if limit is not None else len(json_files)
@@ -91,6 +92,9 @@ def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
         if (i + 1) % 100 == 0 or (i + 1) == total:
             percent = ((i + 1) / total) * 100
             print(f"Processed {i + 1}/{total} files ({percent:.1f}%)")
+
+    print(f"Block loading time: {time() - start:.2f}s")
+
     return X, y
 
 def validate_data(X: List, y: List) -> None:
