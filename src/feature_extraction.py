@@ -1,8 +1,18 @@
+import re
 from typing import Any, Dict, List, Tuple, Union
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline, FeatureUnion, make_pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
+
+# Measurement units for English recipes
+units = [
+    "teaspoon", "teaspoons", "tsp", "tablespoon", "tablespoons", "tbsp",
+    "cup", "cups", "ounce", "ounces", "oz", "pound", "pounds", "lb", "lbs",
+    "gram", "grams", "g", "kilogram", "kilograms", "kg", "liter", "liters", "l",
+    "ml", "milliliter", "milliliters", "pinch", "clove", "cloves", "slice", "slices"
+]
+
 
 class ItemSelector(BaseEstimator, TransformerMixin):
     """
@@ -93,13 +103,18 @@ def extract_features(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     return [
         {
-            "tag": el["tag"],
+            "tag": (tag := el["tag"]),
             "depth": el["depth"],
-            "text_len": len(el["text"]),
-            "starts_with_digit": el["text"][0].isdigit(),
-            "comma_count": el["text"].count(","),
-            "dot_count": el["text"].count("."),
-            "raw": el["text"]
+            "text_len": len(elem_text := el.get("text", "")),
+            "starts_with_digit": elem_text[0].isdigit(),
+            "parent_tag": el.get("parent_tag", "None"),
+            "raw": elem_text,
+            "num_digits": sum(ch.isdigit() for ch in elem_text),
+            "contains_unit": int(any(re.search(r"\b" + re.escape(unit) + r"\b", elem_text.lower()) for unit in units)),
+            "comma_count": elem_text.count(","),
+            "dot_count": elem_text.count("."),
+            "is_heading": int(tag in ["h1", "h2", "h3", "h4", "h5", "h6"]),
+            "is_list_item": int(tag == "li")
         }
         for el in elements
     ]
