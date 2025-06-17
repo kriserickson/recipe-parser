@@ -10,13 +10,13 @@ from time import time
 from typing import Dict, List, Tuple, Any
 
 # Third-party imports
-import numpy as np
 from joblib import dump
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # Local/application imports
 from html_parser import parse_html
@@ -53,6 +53,21 @@ def label_element(text: str, label_data: Dict[str, Any]) -> str:
         return 'title'
     return 'none'
 
+def process_pair(json_file_path: Path) -> Tuple[List[Dict[str, Any]], List[str]]:
+    base = json_file_path.stem
+    html_file = HTML_DIR / f"{base}.html"
+    if not html_file.exists():
+        return [], []
+    label_data = json.loads(json_file_path.read_text(encoding="utf-8"))
+    html = html_file.read_text(encoding="utf-8")
+    elements = parse_html(html)
+    X, y = [], []
+    for el in elements:
+        label = label_element(el["text"], label_data)
+        X.append(el)
+        y.append(label)
+    return X, y
+
 def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
     """
     Load HTML blocks and their corresponding labels from JSON and HTML files.
@@ -70,31 +85,21 @@ def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
     start = time()
     X, y = [], []
     json_files = sorted(LABELS_DIR.glob("recipe_*.json"))
-    total = min(limit, len(json_files)) if limit is not None else len(json_files)
-    for i, json_file in enumerate(json_files):
-        if limit and i >= limit:
-            break
+    if limit is not None:
+        json_files = json_files[:limit]
+    total = len(json_files)
 
-        base = json_file.stem
-        html_file = HTML_DIR / f"{base}.html"
-        if not html_file.exists():
-            continue
-
-        label_data = json.loads(json_file.read_text(encoding="utf-8"))
-        html = html_file.read_text(encoding="utf-8")
-        elements = parse_html(html)
-
-        for el in elements:
-            label = label_element(el["text"], label_data)
-            X.append(el)
-            y.append(label)
-
-        if (i + 1) % 100 == 0 or (i + 1) == total:
-            percent = ((i + 1) / total) * 100
-            print(f"Processed {i + 1}/{total} files ({percent:.1f}%)")
+    with ProcessPoolExecutor() as executor:
+        futures = [executor.submit(process_pair, f) for f in json_files]
+        for i, future in enumerate(as_completed(futures), 1):
+            Xi, yi = future.result()
+            X.extend(Xi)
+            y.extend(yi)
+            if i % 100 == 0 or i == total:
+                percent = (i / total) * 100
+                print(f"Processed {i}/{total} files ({percent:.1f}%)")
 
     print(f"Block loading time: {time() - start:.2f}s")
-
     return X, y
 
 def validate_data(X: List, y: List) -> None:

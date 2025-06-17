@@ -113,8 +113,7 @@ def extract_features(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "contains_unit": int(any(re.search(r"\b" + re.escape(unit) + r"\b", elem_text.lower()) for unit in units)),
             "comma_count": elem_text.count(","),
             "dot_count": elem_text.count("."),
-            #"is_heading": int(tag in ["h1", "h2", "h3", "h4", "h5", "h6"]),
-            #"is_list_item": int(tag == "li")
+
         }
         for el in elements
     ]
