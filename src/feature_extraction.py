@@ -113,7 +113,7 @@ def extract_features(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "contains_unit": int(any(re.search(r"\b" + re.escape(unit) + r"\b", elem_text.lower()) for unit in units)),
             "comma_count": elem_text.count(","),
             "dot_count": elem_text.count("."),
-
+            "contains_quantity_number": int(bool(re.search(r"\d+|\d+/\d+|½|¼|¾|⅓|⅔\bone\b|\btwo\b|\bthree\b|\bfour\b|\bfive\b", elem_text))),
         }
         for el in elements
     ]
