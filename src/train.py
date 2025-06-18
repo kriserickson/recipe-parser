@@ -66,7 +66,8 @@ def process_pair(json_file_path: Path) -> Tuple[List[Dict[str, Any]], List[str]]
     X, y = [], []
     for el in elements:
         label = label_element(el["text"], label_data)
-        X.append(el)
+        features = extract_features(el)
+        X.append(features)
         y.append(label)
     return X, y
 
@@ -154,11 +155,8 @@ def train(limit: int | None = None, memory: bool = False) -> None:
         start_memory = get_memory_usage()
 
     print("Loading labeled data...")
-    X_raw, y = load_labeled_blocks(limit=limit)
-    print(f"Loaded {len(X_raw)} blocks.")
-
-    print("Extracting features...")
-    X_features = extract_features(X_raw)
+    X_features, y = load_labeled_blocks(limit=limit)
+    print(f"Loaded {len(X_features)} blocks.")
 
     print("Splitting train/test...")
     X_train, X_test, y_train, y_test = train_test_split(X_features, y, test_size=0.2, random_state=42)

@@ -91,7 +91,7 @@ def preprocess_data(features: List[Dict[str, Any]]) -> List[Tuple[Dict[str, Any]
     combined = list(zip(features_wo_text, texts))
     return combined
 
-def extract_features(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def extract_features(el: Dict[str, Any]) -> Dict[str, Any]:
     """
     Extracts structured features from a list of elements.
 
@@ -101,22 +101,19 @@ def extract_features(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: List of feature dictionaries with extracted features.
     """
-    return [
-        {
-            "tag": (tag := el["tag"]),
-            "depth": el["depth"],
-            "text_len": len(elem_text := el.get("text", "")),
-            "starts_with_digit": elem_text[0].isdigit(),
-            "parent_tag": el.get("parent_tag", "None"),
-            "raw": elem_text,
-            "num_digits": sum(ch.isdigit() for ch in elem_text),
-            "contains_unit": int(any(re.search(r"\b" + re.escape(unit) + r"\b", elem_text.lower()) for unit in units)),
-            "comma_count": elem_text.count(","),
-            "dot_count": elem_text.count("."),
-            "contains_quantity_number": int(bool(re.search(r"\d+|\d+/\d+|½|¼|¾|⅓|⅔\bone\b|\btwo\b|\bthree\b|\bfour\b|\bfive\b", elem_text))),
-        }
-        for el in elements
-    ]
+    return {
+        "tag": el["tag"],
+        "depth": el["depth"],
+        "text_len": len(elem_text := el.get("text", "")),
+        "starts_with_digit": elem_text[0].isdigit(),
+        "parent_tag": el.get("parent_tag", "None"),
+        "raw": elem_text,
+        "num_digits": sum(ch.isdigit() for ch in elem_text),
+        "contains_unit": int(any(re.search(r"\b" + re.escape(unit) + r"\b", elem_text.lower()) for unit in units)),
+        "comma_count": elem_text.count(","),
+        "dot_count": elem_text.count("."),
+        "contains_quantity_number": int(bool(re.search(r"\d+|\d+/\d+|½|¼|¾|⅓|⅔\bone\b|\btwo\b|\bthree\b|\bfour\b|\bfive\b", elem_text))),
+    }
 
 def build_transformer() -> FeatureUnion:
     """
