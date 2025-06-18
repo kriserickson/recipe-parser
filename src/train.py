@@ -5,6 +5,8 @@
 import json
 import logging
 import argparse
+import os
+
 from pathlib import Path
 from time import time
 from typing import Dict, List, Tuple, Any
@@ -121,7 +123,11 @@ def validate_data(X: List, y: List) -> None:
     if len(X) != len(y):
         raise ValueError(f"X_train and y_train must have the same length. Got {len(X)} and {len(y)}")
 
-def train(limit: int | None = None) -> None:
+
+
+
+
+def train(limit: int | None = None, memory: bool = False) -> None:
     """
     Train and save a text classification model for recipe components.
 
@@ -133,7 +139,20 @@ def train(limit: int | None = None) -> None:
     limit : Optional[int], default=None
         Maximum number of elements to load for training.
     """
+
+    # Start tracking time and memory usage if requested
     start = time()
+    if memory:
+        import psutil
+        import tracemalloc
+
+        def get_memory_usage():
+            process = psutil.Process(os.getpid())
+            return process.memory_info().rss / 1024 / 1024  # MB
+
+        tracemalloc.start()
+        start_memory = get_memory_usage()
+
     print("Loading labeled data...")
     X_raw, y = load_labeled_blocks(limit=limit)
     print(f"Loaded {len(X_raw)} blocks.")
@@ -169,11 +188,21 @@ def train(limit: int | None = None) -> None:
     print(f"Model saved to {MODEL_PATH}")
     print(f"️Total time: {time() - start:.2f}s")
 
+
+    if memory:
+        # Get peak memory
+        current, peak = tracemalloc.get_traced_memory()
+        end_memory = get_memory_usage()
+        print(f"Peak memory from tracemalloc: {peak / 1024 / 1024:.2f} MB")
+        print(f"Memory usage from psutil: {end_memory:.2f} MB")
+        print(f"Memory increase: {end_memory - start_memory:.2f} MB")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a recipe component classifier.')
     parser.add_argument('--limit', type=int, default=None,
                         help='Maximum number of elements to load for training')
+    parser.add_argument('--memory', type=bool, default=False,help='Track memory usage during training')
     args = parser.parse_args()
 
-    train(limit=args.limit)
+    train(limit=args.limit, memory=True)
 
