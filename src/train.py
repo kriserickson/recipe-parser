@@ -22,7 +22,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # Local/application imports
 from html_parser import parse_html
-from feature_extraction import extract_features, build_transformer, preprocess_data
+from feature_extraction import extract_features, build_transformer, preprocess_data, get_section_header
 
 LABELS_DIR = Path("../data/labels")
 HTML_DIR = Path("../data/html_pages")
@@ -68,10 +68,16 @@ def process_pair(json_file_path: Path) -> Tuple[List[Dict[str, Any]], List[str]]
         html = html_file.read_text(encoding="utf-8")
         elements = parse_html(html)
 
+        current_section_heading = None
+
         for idx, el in enumerate(elements):
 
-            label = label_element(el["text"], label_data)
-            features = extract_features(el, idx, elements)
+            elem_text = el["text"]
+            label = label_element(elem_text, label_data)
+
+            current_section_heading = get_section_header(current_section_heading, el)
+
+            features = extract_features(el, idx, elements, current_section_heading)
             X.append(features)
             y.append(label)
 

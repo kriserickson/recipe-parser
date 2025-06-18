@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from joblib import load
 
-from feature_extraction import extract_features, preprocess_data
+from feature_extraction import extract_features, preprocess_data, get_section_header
 from html_parser import parse_html
 
 MODEL_PATH = Path("../models/model.joblib")
@@ -15,8 +15,12 @@ def extract_structured_data(html_path: str):
     html = Path(html_path).read_text(encoding="utf-8")
     elements = parse_html(html)
     all_features = []
+    current_section_heading = None  # Track current section heading
     for idx, el in enumerate(elements):
-        features = extract_features(el, idx, elements)
+
+        current_section_heading = get_section_header(current_section_heading, el)
+
+        features = extract_features(el, idx, elements, current_section_heading)
         all_features.append(features)
 
     data = preprocess_data(all_features)

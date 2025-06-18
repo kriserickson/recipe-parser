@@ -57,6 +57,23 @@ class ItemSelector(BaseEstimator, TransformerMixin):
         else:
             raise ValueError(f"Unknown key: {self.key}")
 
+
+def get_section_header(current_section_heading, el):
+    elem_text = el["text"]
+    tag = el.get("tag", "").lower()
+    elem_text_lower = elem_text.lower()
+    # If this element is a heading → update current section
+    if tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+        # Check if it contains keywords for ingredient or direction sections
+        if any(k in elem_text_lower for k in ["ingr", "component", "element", "material"]):
+            current_section_heading = "ingredient"
+        elif any(k in elem_text_lower for k in
+                 ["instr", "direction", "step", "method", "preparation", "procedure", "technique"]):
+            current_section_heading = "direction"
+        else:
+            current_section_heading = None  # unknown heading
+    return current_section_heading
+
 def split_features_and_text(features: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[str]]:
     """
     Splits features into two lists: one with dicts (without 'raw'), and one with the 'raw' text.
@@ -91,7 +108,7 @@ def preprocess_data(features: List[Dict[str, Any]]) -> List[Tuple[Dict[str, Any]
     combined = list(zip(features_wo_text, texts))
     return combined
 
-def extract_features(el: Dict[str, Any], idx: int, elements: list[Dict[str, Any]]) -> Dict[str, Any]:
+def extract_features(el: Dict[str, Any], idx: int, elements: list[Dict[str, Any]], current_section_heading: str | None = None) -> Dict[str, Any]:
     """
     Extracts structured features from a list of elements.
 
@@ -115,6 +132,8 @@ def extract_features(el: Dict[str, Any], idx: int, elements: list[Dict[str, Any]
         "contains_quantity_number": int(bool(re.search(r"\d+|\d+/\d+|½|¼|¾|⅓|⅔\bone\b|\btwo\b|\bthree\b|\bfour\b|\bfive\b", elem_text))),
         "element_index": idx,
         "position_ratio": idx / max(1, len(elements) - 1),
+        "is_under_current_ingredient_section": int(current_section_heading == "ingredient"),
+        "is_under_current_direction_section": int(current_section_heading == "direction")
     }
 
 def build_transformer() -> FeatureUnion:
