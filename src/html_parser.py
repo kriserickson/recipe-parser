@@ -1,5 +1,10 @@
-from bs4 import BeautifulSoup, Comment
+from typing import List
+from bs4 import BeautifulSoup, Comment, Tag
 
+EXCLUDED_TAGS: List[str] = [
+    "script", "style", "noscript", "footer",
+    "nav", "link", "meta", "button"
+]
 
 def parse_html(html: str) -> list[dict[str, str]]:
     """
@@ -8,7 +13,8 @@ def parse_html(html: str) -> list[dict[str, str]]:
     """
     soup = BeautifulSoup(html, 'html.parser')
 
-    for tag in soup(["script", "style", "noscript", "footer", "nav", 'link', 'meta', 'button']):
+    # Remove unwanted tags
+    for tag in soup(EXCLUDED_TAGS):
         tag.decompose()
 
     elements = []
@@ -18,6 +24,20 @@ def parse_html(html: str) -> list[dict[str, str]]:
         if isinstance(element, Comment):
             return
 
+        # If the element is a <li> tag, combine its text and skip its children
+        if isinstance(element, Tag) and element.name == "li":
+            combined = element.get_text(separator=" ", strip=True)
+            if combined:
+                elements.append({
+                    'text': combined,
+                    'tag': element.name,
+                    'depth': depth,
+                    'itemprop': element.get('itemprop', ''),
+                    'class': element.get('class', []),
+                    'id': element.get('id', '')
+                })
+            return  # Do not emit children of this <li>
+
         if element.name is not None:
             for child in element.children:
                 recurse(child, depth + 1)
@@ -26,7 +46,10 @@ def parse_html(html: str) -> list[dict[str, str]]:
             elements.append({
                 'text': element.string.strip(),
                 'tag': parent_tag,
-                'depth': depth
+                'depth': depth,
+                'itemprop': element.parent.get('itemprop', ''),
+                'class': element.parent.get('class', []),
+                'id': element.parent.get('id', '')
             })
 
     recurse(soup.body if soup.body else soup)
