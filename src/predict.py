@@ -1,23 +1,25 @@
 # predict.py
 # Predict and extract structured content from a new raw HTML recipe page
 
+import json
+import sys
 from pathlib import Path
 from joblib import load
-import sys
-import json
-from typing import Tuple
 
-from html_parser import parse_html
 from feature_extraction import extract_features, preprocess_data
+from html_parser import parse_html
 
 MODEL_PATH = Path("../models/model.joblib")
 
-def extract_structured_data(html_path):
+def extract_structured_data(html_path: string):
     html = Path(html_path).read_text(encoding="utf-8")
     elements = parse_html(html)
-    features = extract_features(elements)
+    all_features = []
+    for el in elements:
+        features = extract_features(el)
+        all_features.append(features)
 
-    data = preprocess_data(features)
+    data = preprocess_data(all_features)
 
     model = load(MODEL_PATH)
     predictions = model.predict(data)
