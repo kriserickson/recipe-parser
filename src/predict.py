@@ -11,12 +11,12 @@ from html_parser import parse_html
 
 MODEL_PATH = Path("../models/model.joblib")
 
-def extract_structured_data(html_path: string):
+def extract_structured_data(html_path: str):
     html = Path(html_path).read_text(encoding="utf-8")
     elements = parse_html(html)
     all_features = []
-    for el in elements:
-        features = extract_features(el)
+    for idx, el in enumerate(elements):
+        features = extract_features(el, idx, elements)
         all_features.append(features)
 
     data = preprocess_data(all_features)

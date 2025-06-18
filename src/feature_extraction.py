@@ -91,7 +91,7 @@ def preprocess_data(features: List[Dict[str, Any]]) -> List[Tuple[Dict[str, Any]
     combined = list(zip(features_wo_text, texts))
     return combined
 
-def extract_features(el: Dict[str, Any]) -> Dict[str, Any]:
+def extract_features(el: Dict[str, Any], idx: int, elements: list[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Extracts structured features from a list of elements.
 
@@ -113,6 +113,8 @@ def extract_features(el: Dict[str, Any]) -> Dict[str, Any]:
         "comma_count": elem_text.count(","),
         "dot_count": elem_text.count("."),
         "contains_quantity_number": int(bool(re.search(r"\d+|\d+/\d+|½|¼|¾|⅓|⅔\bone\b|\btwo\b|\bthree\b|\bfour\b|\bfive\b", elem_text))),
+        "element_index": idx,
+        "position_ratio": idx / max(1, len(elements) - 1),
     }
 
 def build_transformer() -> FeatureUnion:

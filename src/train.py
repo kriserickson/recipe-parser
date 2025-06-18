@@ -60,15 +60,24 @@ def process_pair(json_file_path: Path) -> Tuple[List[Dict[str, Any]], List[str]]
     html_file = HTML_DIR / f"{base}.html"
     if not html_file.exists():
         return [], []
-    label_data = json.loads(json_file_path.read_text(encoding="utf-8"))
-    html = html_file.read_text(encoding="utf-8")
-    elements = parse_html(html)
+
     X, y = [], []
-    for el in elements:
-        label = label_element(el["text"], label_data)
-        features = extract_features(el)
-        X.append(features)
-        y.append(label)
+
+    try:
+        label_data = json.loads(json_file_path.read_text(encoding="utf-8"))
+        html = html_file.read_text(encoding="utf-8")
+        elements = parse_html(html)
+
+        for idx, el in enumerate(elements):
+
+            label = label_element(el["text"], label_data)
+            features = extract_features(el, idx, elements)
+            X.append(features)
+            y.append(label)
+
+    except Exception as e:
+        print(f"Error processing {json_file_path.name}: {e}")
+
     return X, y
 
 def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
@@ -139,6 +148,8 @@ def train(limit: int | None = None, memory: bool = False) -> None:
     ----------
     limit : Optional[int], default=None
         Maximum number of elements to load for training.
+    memory: [Optional[bool]], default=False
+        Whether to track memory usage during training.
     """
 
     # Start tracking time and memory usage if requested
@@ -202,5 +213,5 @@ if __name__ == "__main__":
     parser.add_argument('--memory', type=bool, default=False,help='Track memory usage during training')
     args = parser.parse_args()
 
-    train(limit=args.limit, memory=True)
+    train(limit=args.limit, memory=args.memory)
 
