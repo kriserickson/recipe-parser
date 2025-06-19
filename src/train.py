@@ -166,16 +166,31 @@ def balance_training_data(
     y_train: list,
     *,
     ratio_none_to_minor: int = 3,
-    min_target_per_class: int = 1_000,
     random_state: int = 42,
-):
+) -> tuple[list, list]:
     """
-    • Keeps all minority-class rows.
-    • Down-samples 'none' so:   len(none) <= ratio_none_to_minor * len(all minorities)
-    • Up-samples a minority class if it has < min_target_per_class rows.
-    Prints for each class: upsampled/downsampled/unchanged.
-    """
+    Balance the training data by downsampling the majority class ('none') and upsampling minority classes.
 
+    This function ensures that the 'none' class does not dominate the training set by downsampling it
+    to a ratio relative to the total number of minority class samples. Minority classes are upsampled
+    so that each has at least 33% of the mean count of all non-'none' classes.
+
+    Parameters
+    ----------
+    x_train : list
+        List of feature dictionaries for training samples.
+    y_train : list
+        List of labels corresponding to x_train.
+    ratio_none_to_minor : int, optional
+        The maximum allowed ratio of 'none' class samples to the total number of minority class samples (default: 3).
+    random_state : int, optional
+        Random seed for reproducibility (default: 42).
+
+    Returns
+    -------
+    tuple[list, list]
+        A tuple containing the balanced feature list and label list: (x_bal, y_bal).
+    """
     df = pd.DataFrame(x_train)
     df["label"] = y_train
 
@@ -188,6 +203,16 @@ def balance_training_data(
 
     # -- keep all minorities
     df_minor = df[df["label"] != "none"].copy()
+    minor_counts = df_minor["label"].value_counts().to_dict()
+    if minor_counts:
+        mean_minor = sum(minor_counts.values()) / len(minor_counts)
+        min_target_per_class = int(mean_minor * 0.33)
+    else:
+        mean_minor = 0
+        min_target_per_class = 0
+
+    print(f"Mean non-'none' class count: {mean_minor:.2f}")
+    print(f"Target minimum per class (33% of mean): {min_target_per_class}")
 
     # -- none: downsample if needed
     none_target = min(n_none, ratio_none_to_minor * len(df_minor))
@@ -206,14 +231,11 @@ def balance_training_data(
 
     # -- handle minorities
     frames = [df_none_down]
-    for label, orig_count in counts.items():
-        if label == "none":
-            continue
-
+    for label, orig_count in minor_counts.items():
         df_label = df_minor[df_minor["label"] == label]
         new_count = orig_count
         action = "unchanged"
-        # Upsample tiny minorities if needed
+        # Upsample if needed
         if orig_count < min_target_per_class:
             df_label = resample(
                 df_label,
@@ -223,9 +245,6 @@ def balance_training_data(
             )
             new_count = min_target_per_class
             action = "upsampled"
-        elif orig_count > min_target_per_class:
-            pass  # currently not downsampling minorities
-
         frames.append(df_label)
         print(f"  {label:<10}: {orig_count} → {new_count} ({action})")
 
