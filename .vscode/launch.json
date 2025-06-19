@@ -37,6 +37,16 @@
             "cwd": "${workspaceFolder}",
             "env": {},
             "args": []
+        },
+              {
+            "name": "Python Debugger: cleanup data",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/cleanup_data.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {},
+            "args": []
         }
     ]
 }
