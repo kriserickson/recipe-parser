@@ -132,10 +132,6 @@ def extract_features(el: Dict[str, Any], idx: int, elements: list[Dict[str, Any]
     class_id_str = " ".join(str(x) for x in el.get("class", [])) + " " + str(el.get("id", ""))
     class_id_str = class_id_str.lower()
 
-    # Microdata
-    itemprop = el.get("itemprop", "")
-    itemprop = itemprop.lower() if itemprop else ""
-
     features = {
         "tag": el["tag"],
         "depth": el["depth"],
@@ -154,10 +150,7 @@ def extract_features(el: Dict[str, Any], idx: int, elements: list[Dict[str, Any]
         "is_under_current_direction_section": int(current_section_heading == "direction"),
         "class_has_ing_keyword": int(any(k in class_id_str for k in ing_keywords)),
         "class_has_dir_keyword": int(any(k in class_id_str for k in dir_keywords)),
-        "class_has_title_keyword": int(any(k in class_id_str for k in title_keywords)),
-        "itemprop_name": int(itemprop == "name"),
-        "itemprop_ingredient": int(itemprop == "recipeingredient"),
-        "itemprop_instructions": int(itemprop == "recipeinstructions"),
+        "class_has_title_keyword": int(any(k in class_id_str for k in title_keywords))
     }
 
 
