@@ -6,6 +6,7 @@ import json
 import logging
 import argparse
 import os
+import pandas as pd
 
 from pathlib import Path
 from time import time
@@ -18,6 +19,7 @@ from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils import resample
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from difflib import SequenceMatcher
 
@@ -159,6 +161,83 @@ def validate_data(X: List, y: List) -> None:
         raise ValueError(f"X_train and y_train must have the same length. Got {len(X)} and {len(y)}")
 
 
+def balance_training_data(
+    x_train: list,
+    y_train: list,
+    *,
+    ratio_none_to_minor: int = 3,
+    min_target_per_class: int = 1_000,
+    random_state: int = 42,
+):
+    """
+    • Keeps all minority-class rows.
+    • Down-samples 'none' so:   len(none) <= ratio_none_to_minor * len(all minorities)
+    • Up-samples a minority class if it has < min_target_per_class rows.
+    Prints for each class: upsampled/downsampled/unchanged.
+    """
+
+    df = pd.DataFrame(x_train)
+    df["label"] = y_train
+
+    counts = df["label"].value_counts().to_dict()
+    n_none = counts.get("none", 0)
+
+    print("\n📊 raw class counts")
+    for k, v in counts.items():
+        print(f"  {k:<10}: {v}")
+
+    # -- keep all minorities
+    df_minor = df[df["label"] != "none"].copy()
+
+    # -- none: downsample if needed
+    none_target = min(n_none, ratio_none_to_minor * len(df_minor))
+    action_none = "unchanged"
+    if none_target < n_none:
+        action_none = "downsampled"
+    elif none_target > n_none:
+        action_none = "upsampled"
+
+    df_none = df[df["label"] == "none"].copy()
+    df_none_down = resample(
+        df_none, replace=False, n_samples=none_target, random_state=random_state
+    )
+
+    print(f"  {'none':<10}: {n_none} → {none_target} ({action_none})")
+
+    # -- handle minorities
+    frames = [df_none_down]
+    for label, orig_count in counts.items():
+        if label == "none":
+            continue
+
+        df_label = df_minor[df_minor["label"] == label]
+        new_count = orig_count
+        action = "unchanged"
+        # Upsample tiny minorities if needed
+        if orig_count < min_target_per_class:
+            df_label = resample(
+                df_label,
+                replace=True,
+                n_samples=min_target_per_class,
+                random_state=random_state,
+            )
+            new_count = min_target_per_class
+            action = "upsampled"
+        elif orig_count > min_target_per_class:
+            pass  # currently not downsampling minorities
+
+        frames.append(df_label)
+        print(f"  {label:<10}: {orig_count} → {new_count} ({action})")
+
+    # -- concat & shuffle
+    df_bal = pd.concat(frames).sample(frac=1, random_state=random_state)
+
+    print(f"\n🟢 Final balanced set: {len(df_bal)} rows "
+          f"( none={len(df_none_down)}, minorities={len(df_bal)-len(df_none_down)} )")
+
+    y_bal = df_bal["label"].tolist()
+    x_bal = df_bal.drop("label", axis=1).to_dict(orient="records")
+    return x_bal, y_bal
 
 
 
@@ -199,20 +278,22 @@ def train(limit: int | None = None, memory: bool = False) -> None:
 
     logging.basicConfig(level=logging.INFO)
 
-    validate_data(X_train, y_train)
+    X_train_bal, y_train_bal = balance_training_data(X_train, y_train)
+
+    validate_data(X_train_bal, y_train_bal)
 
     print("Preprocessing data...")
-    X_train_proc = preprocess_data(X_train)
+    X_train_proc = preprocess_data(X_train_bal)
     X_test_proc = preprocess_data(X_test)
 
     print("Training model...")
     model = make_pipeline(
         build_transformer(),
         StandardScaler(with_mean=False),
-        LogisticRegression(solver='lbfgs', max_iter=1000, class_weight='balanced')
+        LogisticRegression(solver='lbfgs', max_iter=1000)
     )
 
-    model.fit(X_train_proc, y_train)
+    model.fit(X_train_proc, y_train_bal)
 
     print("Evaluating...")
     y_pred = model.predict(X_test_proc)
