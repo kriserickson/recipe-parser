@@ -13,6 +13,10 @@ units = [
     "ml", "milliliter", "milliliters", "pinch", "clove", "cloves", "slice", "slices"
 ]
 
+ing_keywords = ["ingredient", "component", "element", "material"]
+dir_keywords = ["instruct", "direction", "step", "method", "preparation", "procedure", "technique"]
+title_keywords = ["title", "name", "headline"]
+
 
 class ItemSelector(BaseEstimator, TransformerMixin):
     """
@@ -65,10 +69,9 @@ def get_section_header(current_section_heading, el):
     # If this element is a heading → update current section
     if tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
         # Check if it contains keywords for ingredient or direction sections
-        if any(k in elem_text_lower for k in ["ingr", "component", "element", "material"]):
+        if any(k in elem_text_lower for k in ing_keywords):
             current_section_heading = "ingredient"
-        elif any(k in elem_text_lower for k in
-                 ["instr", "direction", "step", "method", "preparation", "procedure", "technique"]):
+        elif any(k in elem_text_lower for k in dir_keywords):
             current_section_heading = "direction"
         else:
             current_section_heading = None  # unknown heading
@@ -113,12 +116,21 @@ def extract_features(el: Dict[str, Any], idx: int, elements: list[Dict[str, Any]
     Extracts structured features from a list of elements.
 
     Args:
+        el (Dict[str, Any]): Element dictionary containing 'tag', 'depth', and 'text'.
+        idx (int): Index of the element in the list.
         elements (List[Dict[str, Any]]): List of elements, each with 'tag', 'depth', and 'text'.
+        current_section_heading (str | None): Current section heading, if applicable.
 
     Returns:
         List[Dict[str, Any]]: List of feature dictionaries with extracted features.
+
     """
-    return {
+
+    # Class/id keywords
+    class_id_str = " ".join(str(x) for x in el.get("class", [])) + " " + str(el.get("id", ""))
+    class_id_str = class_id_str.lower()
+
+    features = {
         "tag": el["tag"],
         "depth": el["depth"],
         "text_len": len(elem_text := el.get("text", "")),
@@ -133,8 +145,14 @@ def extract_features(el: Dict[str, Any], idx: int, elements: list[Dict[str, Any]
         "element_index": idx,
         "position_ratio": idx / max(1, len(elements) - 1),
         "is_under_current_ingredient_section": int(current_section_heading == "ingredient"),
-        "is_under_current_direction_section": int(current_section_heading == "direction")
+        "is_under_current_direction_section": int(current_section_heading == "direction"),
+        "class_has_ing_keyword": int(any(k in class_id_str for k in ing_keywords)),
+        "class_has_dir_keyword": int(any(k in class_id_str for k in dir_keywords)),
+        "class_has_title_keyword": int(any(k in class_id_str for k in title_keywords))
     }
+
+
+    return features
 
 def build_transformer() -> FeatureUnion:
     """
