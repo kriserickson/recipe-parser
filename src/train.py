@@ -19,6 +19,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from difflib import SequenceMatcher
 
 # Local/application imports
 from html_parser import parse_html
@@ -27,6 +28,24 @@ from feature_extraction import extract_features, build_transformer, preprocess_d
 LABELS_DIR = Path("../data/labels")
 HTML_DIR = Path("../data/html_pages")
 MODEL_PATH = Path("../models/model.joblib")
+
+def similar(a: str, b: str) -> float:
+    """
+    Compute the similarity ratio between two strings using SequenceMatcher.
+
+    Parameters
+    ----------
+    a : str
+        First string to compare.
+    b : str
+        Second string to compare.
+
+    Returns
+    -------
+    float
+        Similarity ratio between 0.0 and 1.0, where 1.0 means identical strings.
+    """
+    return SequenceMatcher(None, a, b).ratio()
 
 def label_element(text: str, label_data: Dict[str, Any]) -> str:
     """
@@ -47,11 +66,11 @@ def label_element(text: str, label_data: Dict[str, Any]) -> str:
     t = text.strip().lower()
     if not t or t.isdigit():
         return 'none'
-    if any(t in i.lower() for i in label_data.get("ingredients", [])):
+    if any(similar(t, i.lower()) > 0.8 for i in label_data.get("ingredients", [])):
         return 'ingredient'
-    if any(t in d.lower() for d in label_data.get("directions", [])):
+    if any(similar(t, d.lower()) > 0.8 for d in label_data.get("directions", [])):
         return 'direction'
-    if label_data.get("title", "").strip().lower() == t:
+    if similar(label_data.get("title", "").strip().lower(), t) > 0.8:
         return 'title'
     return 'none'
 
@@ -220,4 +239,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     train(limit=args.limit, memory=args.memory)
-
