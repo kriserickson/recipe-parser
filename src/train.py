@@ -197,7 +197,7 @@ def balance_training_data(
     counts = df["label"].value_counts().to_dict()
     n_none = counts.get("none", 0)
 
-    print("\n📊 raw class counts")
+    print("\nraw class counts")
     for k, v in counts.items():
         print(f"  {k:<10}: {v}")
 
@@ -251,7 +251,7 @@ def balance_training_data(
     # -- concat & shuffle
     df_bal = pd.concat(frames).sample(frac=1, random_state=random_state)
 
-    print(f"\n🟢 Final balanced set: {len(df_bal)} rows "
+    print(f"\nFinal balanced set: {len(df_bal)} rows "
           f"( none={len(df_none_down)}, minorities={len(df_bal)-len(df_none_down)} )")
 
     y_bal = df_bal["label"].tolist()
