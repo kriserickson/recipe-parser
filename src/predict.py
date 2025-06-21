@@ -74,4 +74,4 @@ if __name__ == "__main__":
         print(f"Peak memory from tracemalloc: {peak / 1024 / 1024:.2f} MB")
         print(f"Total memory usage from psutil: {end_memory:.2f} MB")
         print(f"Memory increase: {end_memory - start_memory:.2f} MB")
-
+        print(f"️Total time: {time() - start:.2f}s")
