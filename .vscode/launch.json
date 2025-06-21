@@ -8,7 +8,7 @@
             "program": "${workspaceFolder}/src/train.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/src",
-            "args": ["--limit", "1000"]
+            "args": ["--memory", "--limit", "1000"]
         },
         {
             "name": "Python Debugger: train no limit",
@@ -26,7 +26,7 @@
             "program": "${workspaceFolder}/src/predict.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/src",
-            "args": ["..\\data\\html\\crab-cakes.html"]
+            "args": ["--memory", "..\\data\\html\\crab-cakes.html"]
         },
         {
             "name": "Python Debugger: validate_and_filter_recipes",

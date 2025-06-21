@@ -119,7 +119,6 @@ def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
     Tuple[List[Dict[str, Any]], List[str]]
         A tuple containing features (X) and labels (y).
     """
-    os.makedirs(CACHE_DIR, exist_ok=True)
     cache_file = os.path.join(CACHE_DIR, f"labeled_blocks_limit_{limit}.pkl")
 
     if os.path.exists(cache_file):
