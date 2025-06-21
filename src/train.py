@@ -7,6 +7,7 @@ import logging
 import argparse
 import os
 import pandas as pd
+import pickle
 
 from pathlib import Path
 from time import time
@@ -23,13 +24,10 @@ from sklearn.utils import resample
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from difflib import SequenceMatcher
 
+from config import HTML_DIR, MODEL_PATH, LABEL_DIR, CACHE_DIR
 # Local/application imports
 from html_parser import parse_html
 from feature_extraction import extract_features, build_transformer, preprocess_data, get_section_header
-
-LABELS_DIR = Path("../data/labels")
-HTML_DIR = Path("../data/html_pages")
-MODEL_PATH = Path("../models/model.joblib")
 
 def similar(a: str, b: str) -> float:
     """
@@ -121,9 +119,16 @@ def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
     Tuple[List[Dict[str, Any]], List[str]]
         A tuple containing features (X) and labels (y).
     """
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    cache_file = os.path.join(CACHE_DIR, f"labeled_blocks_limit_{limit}.pkl")
+
+    if os.path.exists(cache_file):
+        with open(cache_file, "rb") as f:
+            return pickle.load(f)
+
     start = time()
     X, y = [], []
-    json_files = sorted(LABELS_DIR.glob("recipe_*.json"))
+    json_files = sorted(LABEL_DIR.glob("recipe_*.json"))
     if limit is not None:
         json_files = json_files[:limit]
     total = len(json_files)
@@ -139,6 +144,15 @@ def load_labeled_blocks(limit=None) -> Tuple[List[Dict[str, Any]], List[str]]:
                 print(f"Processed {i}/{total} files ({percent:.1f}%)")
 
     print(f"Block loading time: {time() - start:.2f}s")
+
+    # If limit is set, apply it
+    if limit is not None:
+        X = X[:limit]
+        y = y[:limit]
+
+    with open(cache_file, "wb") as f:
+        pickle.dump((X, y), f)
+
     return X, y
 
 def validate_data(X: List, y: List) -> None:
@@ -319,7 +333,7 @@ def train(limit: int | None = None, memory: bool = False) -> None:
     print(classification_report(y_test, y_pred))
 
     dump(model, MODEL_PATH)
-    print(f"Model saved to {MODEL_PATH}")
+    print(f"Model saved to {MODEL_PATH} with a size of {os.path.getsize(MODEL_PATH) / 1024 / 1024:.3f} MB")
     print(f"️Total time: {time() - start:.2f}s")
 
 
@@ -335,7 +349,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train a recipe component classifier.')
     parser.add_argument('--limit', type=int, default=None,
                         help='Maximum number of elements to load for training')
-    parser.add_argument('--memory', type=bool, default=False,help='Track memory usage during training')
+    parser.add_argument('--memory', action="store_true", help='Track memory usage during training')
     args = parser.parse_args()
 
     train(limit=args.limit, memory=args.memory)
