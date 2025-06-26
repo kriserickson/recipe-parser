@@ -1,35 +1,31 @@
 # train.py
 # Train an HTML block classifier using labeled JSON and HTML pairs
 
+import argparse
 # Standard library imports
 import json
 import logging
-import argparse
 import os
-import pandas as pd
 import pickle
-
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from difflib import SequenceMatcher
 from pathlib import Path
 from time import time
 from typing import Dict, List, Tuple, Any
 
+import pandas as pd
 # Third-party imports
 from joblib import dump
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, HistGradientBoostingClassifier, \
-    ExtraTreesClassifier
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from difflib import SequenceMatcher
 
 from config import HTML_DIR, MODEL_PATH, LABEL_DIR, CACHE_DIR
+from feature_extraction import extract_features, build_transformer, preprocess_data, get_section_header, Densify
 # Local/application imports
 from html_parser import parse_html
-from feature_extraction import extract_features, build_transformer, preprocess_data, get_section_header, Densify
 
 
 def similar(a: str, b: str) -> float:
