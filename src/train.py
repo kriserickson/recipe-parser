@@ -15,7 +15,8 @@ from typing import Dict, List, Tuple, Any
 
 # Third-party imports
 from joblib import dump
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, HistGradientBoostingClassifier, \
+    ExtraTreesClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
@@ -28,7 +29,8 @@ from difflib import SequenceMatcher
 from config import HTML_DIR, MODEL_PATH, LABEL_DIR, CACHE_DIR
 # Local/application imports
 from html_parser import parse_html
-from feature_extraction import extract_features, build_transformer, preprocess_data, get_section_header
+from feature_extraction import extract_features, build_transformer, preprocess_data, get_section_header, Densify
+
 
 def similar(a: str, b: str) -> float:
     """
@@ -322,7 +324,10 @@ def train(limit: int | None = None, memory: bool = False) -> None:
     print("Training model...")
     model = make_pipeline(
         build_transformer(),
-        GradientBoostingClassifier(random_state=42)
+        Densify(),
+        HistGradientBoostingClassifier(
+            random_state=42
+        )
     )
 
     model.fit(X_train_proc, y_train_bal)

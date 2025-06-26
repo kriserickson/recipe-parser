@@ -9,8 +9,9 @@ from time import time
 from joblib import load
 
 from config import MODEL_PATH
-from feature_extraction import extract_features, preprocess_data, get_section_header
+from feature_extraction import extract_features, preprocess_data, get_section_header, Densify
 from html_parser import parse_html
+
 
 def extract_structured_data(html_path: str) -> dict:
 

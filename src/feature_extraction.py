@@ -171,3 +171,10 @@ def build_transformer() -> FeatureUnion:
 
     return transformer
 
+class Densify(TransformerMixin):
+    def fit(self, X, y=None):
+        return self
+    def transform(self, X, y=None):
+        return X.toarray()
+
+
