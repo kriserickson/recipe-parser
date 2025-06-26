@@ -15,7 +15,7 @@ from typing import Dict, List, Tuple, Any
 
 # Third-party imports
 from joblib import dump
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
@@ -322,7 +322,7 @@ def train(limit: int | None = None, memory: bool = False) -> None:
     print("Training model...")
     model = make_pipeline(
         build_transformer(),
-        RandomForestClassifier(random_state=42)
+        GradientBoostingClassifier(random_state=42)
     )
 
     model.fit(X_train_proc, y_train_bal)
