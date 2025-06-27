@@ -19,14 +19,41 @@
             "cwd": "${workspaceFolder}/src",
             "args": []
         },
-      {
+        {
             "name": "Python Debugger: predict ",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/src/predict.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/src",
-            "args": ["--memory", "..\\data\\html\\crab-cakes.html"]
+            "args": ["--memory", "../data/html/crab-cakes.html"]
+        },
+            {
+            "name": "Python Debugger: predict papaya salad",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/predict.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": ["--memory", "../data/html_pages/recipe_00004.html"]
+        },
+      {
+            "name": "Python Debugger: predict angel food cake",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/predict.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": ["--memory", "../data/html_pages/recipe_00038.html"]
+        },
+      {
+            "name": "Python Debugger: predict stuffed mushrooms",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/predict.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": ["--memory", "../data/html_pages/recipe_00063.html"]
         },
         {
             "name": "Python Debugger: validate_and_filter_recipes",
