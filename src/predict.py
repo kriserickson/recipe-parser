@@ -9,6 +9,7 @@ from time import time
 from joblib import load
 
 from config import MODEL_PATH
+# Note, Densify is imported here but not used in the script but is used in model so it must be here.
 from feature_extraction import extract_features, preprocess_data, get_section_header, Densify
 from html_parser import parse_html
 
@@ -41,19 +42,18 @@ def is_fake_ingredient(text: str) -> bool:
         return True
     return False
 
-def extract_structured_data(html_path: str, model) -> dict:
+def extract_structured_data(html: str, model) -> dict:
     """
 def extract_structured_data(html_path: str, model) -> dict:
 
     Args:
-        html_path (str): Path to the HTML file containing the recipe.
+        html (str): Contents of the HTML file
         model (Any): The trained model used for prediction.
 
+    Returns:
         dict: A dictionary with keys 'title', 'ingredients', and 'directions'.
     """
 
-
-    html = Path(html_path).read_text(encoding="utf-8")
     elements = parse_html(html)
     all_features = []
     current_section_heading = None  # Track current section heading
@@ -104,8 +104,10 @@ if __name__ == "__main__":
         tracemalloc.start()
         start_memory = get_memory_usage()
 
-    model = load(MODEL_PATH)
-    result = extract_structured_data(args.html_path, model)
+    recipeModel = load(MODEL_PATH)
+    html = Path(args.html_path).read_text(encoding="utf-8")
+
+    result = extract_structured_data(html, recipeModel)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
     if args.memory:
