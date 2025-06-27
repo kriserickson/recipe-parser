@@ -8,16 +8,12 @@ from config import MODEL_PATH
 # PRELOAD model at startup
 recipeModel = load(MODEL_PATH)
 
-def extract_structured_data_with_model(html_text: str) -> dict:
-    # If your extract_structured_data takes a model, pass it here; else, refactor to use the preloaded model.
-    return extract_structured_data(html_text, recipeModel)  # Or whatever your function requires
-
 app = FastAPI()
 
 @app.post("/predict")
 async def predict(html: UploadFile = File(...)):
     html_text = (await html.read()).decode("utf-8")
-    result = extract_structured_data_with_model(html_text)
+    result = extract_structured_data(html_text, recipeModel)
     return JSONResponse(result)
 
 @app.get("/ping")
