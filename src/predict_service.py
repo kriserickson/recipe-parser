@@ -2,10 +2,10 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 from joblib import load
 
-from predict import extract_structured_data  # <-- import your real function
+from predict import extract_structured_data
 from config import MODEL_PATH
 
-# PRELOAD model at startup (example: set global variable)
+# PRELOAD model at startup
 recipeModel = load(MODEL_PATH)
 
 def extract_structured_data_with_model(html_text: str) -> dict:
