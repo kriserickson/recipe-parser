@@ -1,0 +1,79 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: train limit 1000",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/train.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": ["--memory", "--limit", "1000"]
+        },
+        {
+            "name": "Python Debugger: train no limit",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/train.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": []
+        },
+        {
+            "name": "Python Debugger: predict ",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/predict.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": ["--memory", "../data/html/crab-cakes.html"]
+        },
+            {
+            "name": "Python Debugger: predict papaya salad",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/predict.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": ["--memory", "../data/html_pages/recipe_00004.html"]
+        },
+      {
+            "name": "Python Debugger: predict angel food cake",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/predict.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": ["--memory", "../data/html_pages/recipe_00038.html"]
+        },
+      {
+            "name": "Python Debugger: predict stuffed mushrooms",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/predict.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
+            "args": ["--memory", "../data/html_pages/recipe_00063.html"]
+        },
+        {
+            "name": "Python Debugger: validate_and_filter_recipes",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/validate_and_filter_recipes.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {},
+            "args": []
+        },
+              {
+            "name": "Python Debugger: cleanup data",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/cleanup_data.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {},
+            "args": []
+        }
+    ]
+}
