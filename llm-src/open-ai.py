@@ -77,7 +77,9 @@ Output:
     html_path = get_html_path(args.html_file)
 
     with open(html_path, 'r', encoding='utf-8') as f:
-        recipe_html = f.read()
+        raw_html = f.read()
+
+    recipe_html = clean_html(raw_html)
 
     prompt = f"""Extract the recipe as JSON from the webpage HTML:
 {example}    
