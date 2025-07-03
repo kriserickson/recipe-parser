@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 import tiktoken
 
-from helpers import get_html_path
+from helpers import get_html_path, clean_html
 
 # Load environment variables from .env
 base_dir = Path(__file__).resolve().parent.parent
@@ -75,7 +75,9 @@ Output:
     html_path = get_html_path(args.html_file)
 
     with open(html_path, 'r', encoding='utf-8') as f:
-        recipe_html = f.read()
+        raw_html = f.read()
+
+    recipe_html = clean_html(raw_html)
 
     prompt = f"""Extract the recipe as JSON from the webpage HTML:
 {example}    
