@@ -88,7 +88,7 @@ Output:
 
     outputs = model.generate(
         **inputs,
-        max_new_tokens=300,
+        max_new_tokens=2400,
         do_sample=True,
         temperature=0.7,
         top_p=0.9,

@@ -4,6 +4,8 @@ import dotenv
 import sys
 from pathlib import Path
 import tiktoken
+import time
+import psutil
 
 from helpers import get_html_path, clean_html
 
@@ -91,12 +93,22 @@ Output:
     model = args.model
     token_count = count_tokens(prompt, model)
     print(f"Prompt token count: {token_count}")
-    # proceed = input("Continue and send to OpenAI? (y/n): ").strip().lower()
-    # if proceed != 'y':
-    #     print("Aborted by user.")
-    #     sys.exit(0)
+    proceed = input("Continue and send to OpenAI? (y/n): ").strip().lower()
+    if proceed != 'y':
+        print("Aborted by user.")
+        sys.exit(0)
 
     print("Sending prompt to OpenAI...")
+    start_time = time.time()
+    process = psutil.Process(os.getpid())
+    mem_before = process.memory_info().rss / (1024 * 1024)  # in MB
+
     result = get_openai_completion(prompt, open_ai_model=model, max_tokens=args.max_tokens, temperature=args.temperature, top_p=args.top_p)
-    print("\n--- OpenAI Response ---\n")
+
+    mem_after = process.memory_info().rss / (1024 * 1024)  # in MB
+    elapsed = time.time() - start_time
+
+    print(f"\n--- OpenAI Response ---\n")
     print(result)
+    print(f"\nTime elapsed: {elapsed:.2f} seconds")
+    print(f"Memory usage: {mem_before:.2f} MB -> {mem_after:.2f} MB (Δ {mem_after - mem_before:.2f} MB)")
