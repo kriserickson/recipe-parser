@@ -13,7 +13,7 @@ load_dotenv()
 
 OLLAMA_API_URL = os.getenv('OLLAMA_API_URL', 'http://localhost:11434/api/generate')
 
-def count_tokens(text, model):
+def count_words(text, model):
     # Placeholder: Ollama models may not provide token counting directly
     # You may want to use tiktoken or similar for compatible models
     return len(text.split())
@@ -82,8 +82,8 @@ Output:
 """
 
     model = args.model
-    token_count = count_tokens(prompt, model)
-    print(f"Prompt token count: {token_count}")
+    word_count = count_words(prompt, model)
+    print(f"Prompt word count: {word_count}")
 
     print("Sending prompt to Ollama...")
     start_time = time.time()
