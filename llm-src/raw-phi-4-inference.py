@@ -53,10 +53,9 @@ def main() -> None:
         trust_remote_code=True,
     )
 
-    print(f"Loaded model in {time.time() - start:.2f} sec")
+    print(f"Loaded model in {time.time() - start:.2f} sec, model size: {model.get_memory_footprint() / 1024**2:.2f} MB device: {model.device}")
 
     prompt = f"""Extract the recipe as JSON from the webpage HTML:
-    # Prompt
     
 ### Example 
 
