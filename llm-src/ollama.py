@@ -2,7 +2,6 @@ import argparse
 import os
 import time
 
-import psutil
 import requests
 from dotenv import load_dotenv
 
@@ -45,7 +44,7 @@ def main():
     parser.add_argument("--model", default="phi4-mini", help="Ollama model name (default: phi4-mini)")
     parser.add_argument("--few-shot", type=bool, default=False)
     parser.add_argument("--max_tokens", type=int, default=1024, help="Max tokens for Ollama response")
-    parser.add_argument("--temperature", type=float, default=0.7, help="Sampling temperature")
+    parser.add_argument("--temperature", type=float, default=0.2, help="Sampling temperature")
     parser.add_argument("--top_p", type=float, default=0.9, help="Top-p sampling")
     args = parser.parse_args()
     example = ''
@@ -74,7 +73,7 @@ Output:
         raw_html = f.read()
     recipe_html = clean_html(raw_html)
 
-    prompt = f"""Extract the recipe from the webpage HTML.  Respond using JSON format with the following keys: title, ingredients, directions.
+    prompt = f"""Extract the recipe ingredients, directions and title from the webpage HTML.  Respond using JSON format with the following keys: title, ingredients, directions.
 {example}    
 ### Input:
 {recipe_html}
