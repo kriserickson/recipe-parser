@@ -74,6 +74,24 @@
             "cwd": "${workspaceFolder}",
             "env": {},
             "args": []
+        },
+
+        {
+            "name": "Python Debugger: uvicorn similar_service (port 8080)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "src.similar_service:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8080",
+                "--reload"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {}
         }
     ]
 }

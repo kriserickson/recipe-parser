@@ -54,15 +54,6 @@ env/
 env.bak/
 venv.bak/
 
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# VS Code
-.vscode/
 
 # PyCharm
 /.idea/
@@ -95,6 +86,7 @@ Desktop.ini
 /data/labels/*.json
 /data/processing_state.json
 /data/recipes.bson
+/data/labels.json
 
 # Model files
 *.joblib
@@ -102,5 +94,6 @@ Desktop.ini
 # Python object serialization
 *.pkl
 
+__pycache__/
 
 /src/convert_bson.py
