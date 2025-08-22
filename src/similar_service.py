@@ -27,7 +27,7 @@ FILENAMES_PATH = MODELS_DIR / "recipe_filenames.pkl"   # <-- new
 vectorizer = None
 kmeans = None
 titles: List[str] = []
-filenames: List[str] = []            # <-- new
+filenames: List[str] = []          
 X: csr_matrix | None = None
 cluster_to_indices: dict[int, np.ndarray] = {}
 
@@ -36,8 +36,8 @@ class SimilarResponse(BaseModel):
     cluster: int | None
     total_candidates: int
     results: List[Dict[str, Any]]
-    matched_title: str | None = None            # <-- new
-    matched_filename: str | None = None         # <-- new
+    matched_title: str | None = None            
+    matched_filename: str | None = None         
 
 def _build_cluster_index(labels: np.ndarray) -> dict[int, np.ndarray]:
     """Map cluster_id -> np.ndarray of row indices."""
@@ -187,14 +187,14 @@ def similar_recipes(
         else:
             cluster_id = int(kmeans.predict(q_vec)[0])
 
-        cand_idxs = cluster_to_indices.get(cluster_id, np.array([], dtype=np.int32))
-        if cand_idxs.size == 0:
-            cand_idxs = np.arange(X.shape[0], dtype=np.int32)
+        candidate_indexes = cluster_to_indices.get(cluster_id, np.array([], dtype=np.int32))
+        if candidate_indexes.size == 0:
+            candidate_indexes = np.arange(X.shape[0], dtype=np.int32)
 
-        cand_idxs = cand_idxs[cand_idxs != q_idx]
-        if cand_idxs.size == 0:
+        candidate_indexes = candidate_indexes[candidate_indexes != q_idx]
+        if candidate_indexes.size == 0:
             return SimilarResponse(
-                query=titles[q_idx],
+                query=query,
                 cluster=cluster_id,
                 total_candidates=0,
                 results=[],
@@ -202,33 +202,23 @@ def similar_recipes(
                 matched_filename=(filenames[q_idx] if filenames and filenames[q_idx] else None),
             )
 
-        cand_matrix = X[cand_idxs]
-        top_local, sims = _cosine_sim_rank(q_vec, cand_matrix, top_k=min(top_k, cand_matrix.shape[0]))
-        results = _format_results(cand_idxs, sims, top_local)
+        candidate_matrix = X[candidate_indexes]
+        top_local, sims = _cosine_sim_rank(q_vec, candidate_matrix, top_k=min(top_k, candidate_matrix.shape[0]))
+        results = _format_results(candidate_indexes, sims, top_local)
         return SimilarResponse(
-            query=titles[q_idx],
+            query=query,
             cluster=cluster_id,
-            total_candidates=int(cand_matrix.shape[0]),
+            total_candidates=int(candidate_matrix.shape[0]),
             results=results,
             matched_title=titles[q_idx],
             matched_filename=(filenames[q_idx] if filenames and filenames[q_idx] else None),
         )
 
-    # 2) Fallback: free-text query vectorized (original behavior)
-    q_vec = vectorizer.transform([query])
-    cluster_id = int(kmeans.predict(q_vec)[0])
-    cand_idxs = cluster_to_indices.get(cluster_id, np.array([], dtype=np.int32))
-    if cand_idxs.size == 0:
-        cand_idxs = np.arange(X.shape[0], dtype=np.int32)
-
-    cand_matrix = X[cand_idxs]
-    top_local, sims = _cosine_sim_rank(q_vec, cand_matrix, top_k=min(top_k, cand_matrix.shape[0]))
-    results = _format_results(cand_idxs, sims, top_local)
     return SimilarResponse(
         query=query,
-        cluster=cluster_id,
-        total_candidates=int(cand_matrix.shape[0]),
-        results=results,
+        cluster=0,
+        total_candidates=0,
+        results=[],
         matched_title=None,
         matched_filename=None,
     )
