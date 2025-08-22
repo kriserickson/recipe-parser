@@ -21,3 +21,4 @@ torch
 sentence_transformers~=5.0.0
 ipykernel
 rapidfuzz
+matplotlib
