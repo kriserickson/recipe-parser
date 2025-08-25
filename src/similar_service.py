@@ -10,13 +10,13 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from difflib import SequenceMatcher
 from rapidfuzz import process as rf_process, fuzz as rf_fuzz
+from sklearn.metrics.pairwise import cosine_similarity
         
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 MODELS_DIR = PROJECT_DIR / "models"
 
 # ---------- Config: file paths ----------
-VECTORIZER_PATH = MODELS_DIR / "tfidf_vectorizer.pkl"
 KMEANS_PATH = MODELS_DIR / "kmeans_model.pkl"
 TITLES_PATH = MODELS_DIR / "recipe_titles.pkl"
 X_PATH = MODELS_DIR / "tfidf_matrix.joblib"
@@ -24,7 +24,6 @@ FILENAMES_PATH = MODELS_DIR / "recipe_filenames.pkl"   # <-- new
 
 # ---------- Core search helpers ----------
 
-vectorizer = None
 kmeans = None
 titles: List[str] = []
 filenames: List[str] = []          
@@ -49,10 +48,8 @@ def _build_cluster_index(labels: np.ndarray) -> dict[int, np.ndarray]:
 @asynccontextmanager
 async def lifespan(app):
     # startup: load artifacts (same logic as previous _load_artifacts)
-    global vectorizer, kmeans, titles, filenames, X, cluster_to_indices
+    global kmeans, titles, filenames, X, cluster_to_indices
     try:
-        with open(VECTORIZER_PATH, "rb") as f:
-            vectorizer = pickle.load(f)
         with open(KMEANS_PATH, "rb") as f:
             kmeans = pickle.load(f)
         with open(TITLES_PATH, "rb") as f:
@@ -98,18 +95,49 @@ async def lifespan(app):
 # create app with lifespan handler
 app = FastAPI(title="Recipe Similarity API", version="1.0.0", lifespan=lifespan)
 
-def _cosine_sim_rank(q_vec: csr_matrix, cand_matrix: csr_matrix, top_k: int) -> np.ndarray:
+# Toggle default similarity computation method:
+# - If True: use sklearn.metrics.pairwise.cosine_similarity which will normalize vectors
+#   (safer if you are unsure about L2-normalization) but is slightly slower/has more overhead.
+# - If False: use sparse dot-product (q_vec @ cand_matrix.T) which is fastest when vectors are
+#   already L2-normalized (TF-IDF default). Good for large candidate sets.
+USE_SKLEARN_COSINE = False
+
+def _cosine_sim_rank(query_vector: csr_matrix, candidate_matrix: csr_matrix, top_k: int, use_sklearn: bool ) -> tuple[np.ndarray, np.ndarray]:
     """
     Rank candidates by cosine similarity. With TF-IDF default norm='l2',
     dot product equals cosine similarity.
-    Returns array of candidate row indices (relative to cand_matrix) sorted desc.
+
+    Parameters
+    - q_vec:      (1 x D) query sparse row
+    - cand_matrix:(N x D) candidate sparse matrix
+    - top_k:      number of top results to return
+    - use_sklearn: if True use sklearn.cosine_similarity (robust, normalizes inside).
+                   if False use sparse dot-product (fast, requires pre-normalized vectors).
+                   
+    Returns (top_local_indices_relative_to_cand_matrix, sims_array)
     """
-    # sims shape: (1, n_cands)
-    sims = (q_vec @ cand_matrix.T).toarray().ravel()
-    # argsort descending, take top_k
-    top_local = np.argpartition(-sims, kth=min(top_k, sims.size - 1))[:top_k]
-    # sort those top_k by true score
-    top_local = top_local[np.argsort(-sims[top_local])]
+    
+    # Compute similarity scores (1D array length n_cands)
+    if use_sklearn:
+        # sklearn will handle normalization and safety checks.
+        sims = cosine_similarity(query_vector, candidate_matrix).ravel()
+    else:
+        # Fast sparse dot-product. Correct only if rows are L2-normalized (TF-IDF default).
+        sims = (query_vector @ candidate_matrix.T).toarray().ravel()
+
+    n = sims.size
+
+    if n == 0:
+        return np.asarray([], dtype=np.int32), sims
+
+    k = min(max(int(top_k), 1), n)  # ensure 1 <= k <= n
+    
+    # np.argpartition is O(n) and avoids a full sort of all N elements. It returns an unordered partition 
+    # where the first k positions contain the top-k items. - We then fully sort only those k items to 
+    # produce descending order.
+    part = np.argpartition(-sims, kth=k-1)[:k]
+    top_local = part[np.argsort(-sims[part])]
+    
     return top_local, sims
 
 def _format_results(candidate_global_indices: np.ndarray, sims: np.ndarray, top_local: np.ndarray) -> List[Dict[str, Any]]:
@@ -167,8 +195,6 @@ def similar_recipes(
     return recipes similar by ingredients. If no title match passes `fuzzy_cutoff`,
     fall back to free-text vectorizing of the query (original behavior).
     """
-    if vectorizer is None or kmeans is None:
-        raise HTTPException(status_code=503, detail="Models not loaded yet.")
     if X is None:
         raise HTTPException(
             status_code=503,
@@ -178,40 +204,40 @@ def similar_recipes(
     # 1) Try fuzzy title match
     best_idx, match_score = _best_title_index(query, cutoff=fuzzy_cutoff)
     if best_idx is not None and match_score >= fuzzy_cutoff:
-        q_idx = int(best_idx)
-        q_vec = X[q_idx]
+        query_index = int(best_idx)
+        query_vector = X[query_index]
 
         # Determine cluster for that recipe
         if hasattr(kmeans, "labels_"):
-            cluster_id = int(kmeans.labels_[q_idx])
+            cluster_id = int(kmeans.labels_[query_index])
         else:
-            cluster_id = int(kmeans.predict(q_vec)[0])
+            cluster_id = int(kmeans.predict(query_vector)[0])
 
         candidate_indexes = cluster_to_indices.get(cluster_id, np.array([], dtype=np.int32))
         if candidate_indexes.size == 0:
             candidate_indexes = np.arange(X.shape[0], dtype=np.int32)
 
-        candidate_indexes = candidate_indexes[candidate_indexes != q_idx]
+        candidate_indexes = candidate_indexes[candidate_indexes != query_index]
         if candidate_indexes.size == 0:
             return SimilarResponse(
                 query=query,
                 cluster=cluster_id,
                 total_candidates=0,
                 results=[],
-                matched_title=titles[q_idx],
-                matched_filename=(filenames[q_idx] if filenames and filenames[q_idx] else None),
+                matched_title=titles[query_index],
+                matched_filename=(filenames[query_index] if filenames and filenames[query_index] else None),
             )
 
         candidate_matrix = X[candidate_indexes]
-        top_local, sims = _cosine_sim_rank(q_vec, candidate_matrix, top_k=min(top_k, candidate_matrix.shape[0]))
+        top_local, sims = _cosine_sim_rank(query_vector, candidate_matrix, top_k=min(top_k, candidate_matrix.shape[0]), use_sklearn=USE_SKLEARN_COSINE)
         results = _format_results(candidate_indexes, sims, top_local)
         return SimilarResponse(
             query=query,
             cluster=cluster_id,
             total_candidates=int(candidate_matrix.shape[0]),
             results=results,
-            matched_title=titles[q_idx],
-            matched_filename=(filenames[q_idx] if filenames and filenames[q_idx] else None),
+            matched_title=titles[query_index],
+            matched_filename=(filenames[query_index] if filenames and filenames[query_index] else None),
         )
 
     return SimilarResponse(
