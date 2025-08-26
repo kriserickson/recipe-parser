@@ -3,7 +3,7 @@ import pickle
 from typing import List, Dict, Any
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Query
 from pydantic import BaseModel
 from joblib import load as joblib_load
 import numpy as np
@@ -11,7 +11,9 @@ from scipy.sparse import csr_matrix
 from difflib import SequenceMatcher
 from rapidfuzz import process as rf_process, fuzz as rf_fuzz
 from sklearn.metrics.pairwise import cosine_similarity
-        
+
+# Toggle default similarity computation method:
+USE_SKLEARN_COSINE = True        
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 MODELS_DIR = PROJECT_DIR / "models"
@@ -95,12 +97,6 @@ async def lifespan(app):
 # create app with lifespan handler
 app = FastAPI(title="Recipe Similarity API", version="1.0.0", lifespan=lifespan)
 
-# Toggle default similarity computation method:
-# - If True: use sklearn.metrics.pairwise.cosine_similarity which will normalize vectors
-#   (safer if you are unsure about L2-normalization) but is slightly slower/has more overhead.
-# - If False: use sparse dot-product (q_vec @ cand_matrix.T) which is fastest when vectors are
-#   already L2-normalized (TF-IDF default). Good for large candidate sets.
-USE_SKLEARN_COSINE = False
 
 def _cosine_sim_rank(query_vector: csr_matrix, candidate_matrix: csr_matrix, top_k: int, use_sklearn: bool ) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -185,34 +181,24 @@ def _best_title_index(name: str, cutoff: float = 0.35) -> tuple[int | None, floa
 
 @app.get("/similar_recipes", response_model=SimilarResponse)
 def similar_recipes(
-    query: str = Query(..., min_length=1),
+    recipe_name: str = Query(..., min_length=1),
     top_k: int = Query(10, ge=1, le=100),  # default to 10 results as requested
     fuzzy_cutoff: float = Query(0.35, ge=0.0, le=1.0),
 ):
     """
-    If the query looks like a recipe title, perform a fuzzy title match. If a good title
-    match is found, use that recipe's TF-IDF ingredient vector as the query vector and
-    return recipes similar by ingredients. If no title match passes `fuzzy_cutoff`,
-    fall back to free-text vectorizing of the query (original behavior).
-    """
-    if X is None:
-        raise HTTPException(
-            status_code=503,
-            detail="TF-IDF matrix (X) not available on server. Save and deploy tfidf_matrix.joblib.",
-        )
-
+    It first performs a fuzzy title match. If a good title match is found, use that recipe's 
+    TF-IDF ingredient vector as the query vector and return recipes similar by ingredients. 
+    If no good title match is found, return an empty result set.
+    """    
     # 1) Try fuzzy title match
-    best_idx, match_score = _best_title_index(query, cutoff=fuzzy_cutoff)
+    best_idx, match_score = _best_title_index(recipe_name, cutoff=fuzzy_cutoff)
     if best_idx is not None and match_score >= fuzzy_cutoff:
         query_index = int(best_idx)
         query_vector = X[query_index]
 
         # Determine cluster for that recipe
-        if hasattr(kmeans, "labels_"):
-            cluster_id = int(kmeans.labels_[query_index])
-        else:
-            cluster_id = int(kmeans.predict(query_vector)[0])
-
+        cluster_id = int(kmeans.labels_[query_index])
+        
         candidate_indexes = cluster_to_indices.get(cluster_id, np.array([], dtype=np.int32))
         if candidate_indexes.size == 0:
             candidate_indexes = np.arange(X.shape[0], dtype=np.int32)
@@ -220,7 +206,7 @@ def similar_recipes(
         candidate_indexes = candidate_indexes[candidate_indexes != query_index]
         if candidate_indexes.size == 0:
             return SimilarResponse(
-                query=query,
+                query=recipe_name,
                 cluster=cluster_id,
                 total_candidates=0,
                 results=[],
@@ -232,7 +218,7 @@ def similar_recipes(
         top_local, sims = _cosine_sim_rank(query_vector, candidate_matrix, top_k=min(top_k, candidate_matrix.shape[0]), use_sklearn=USE_SKLEARN_COSINE)
         results = _format_results(candidate_indexes, sims, top_local)
         return SimilarResponse(
-            query=query,
+            query=recipe_name,
             cluster=cluster_id,
             total_candidates=int(candidate_matrix.shape[0]),
             results=results,
@@ -241,7 +227,7 @@ def similar_recipes(
         )
 
     return SimilarResponse(
-        query=query,
+        query=recipe_name,
         cluster=0,
         total_candidates=0,
         results=[],
