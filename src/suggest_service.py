@@ -3,6 +3,7 @@ import os
 import json
 import pickle
 from typing import List, Optional
+from urllib.parse import urlparse
 
 import numpy as np
 import requests
@@ -179,7 +180,7 @@ def suggest_recipe(req: SuggestRequest):
     llm_out = call_llm(candidate_list_str, req.ingredients, req.recipe_style)
 
     return {
-        "llm": llm_out,
+        "suggested_recipe": llm_out,
         "candidates": [
             {"index": idx, "title": entry.get("title"), "file": entry.get("source_file"), "score": score}
             for idx, entry, score in candidates
@@ -221,3 +222,35 @@ def get_recipe_file(filename: str):
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read recipe: {e}")
+
+
+@app.get("/check_url")
+def check_url(url: str):
+    """Server-side URL check to avoid browser CORS issues.
+    Performs a HEAD request; falls back to GET if HEAD not allowed.
+    Returns { ok: bool, status: int, final_url: str }.
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            raise HTTPException(status_code=400, detail="Unsupported URL scheme")
+
+        headers = {"User-Agent": "RecipeSuggest/1.0"}
+        try:
+            r = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
+            status = r.status_code
+            ok = 200 <= status < 400
+            if not ok or status in (405, 501):  # some servers disallow HEAD
+                r = requests.get(url, headers=headers, timeout=5, stream=True, allow_redirects=True)
+                status = r.status_code
+                ok = 200 <= status < 400
+                # Close quickly to avoid downloading body
+                r.close()
+        except requests.RequestException as e:
+            return {"ok": False, "status": None, "error": str(e)}
+
+        return {"ok": ok, "status": status, "final_url": r.url}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"URL check failed: {e}")
