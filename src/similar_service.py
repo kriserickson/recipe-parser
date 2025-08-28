@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from joblib import load as joblib_load
 import numpy as np
 from scipy.sparse import csr_matrix
-from difflib import SequenceMatcher
 from rapidfuzz import process as rf_process, fuzz as rf_fuzz
 from sklearn.metrics.pairwise import cosine_similarity
 
