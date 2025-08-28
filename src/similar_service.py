@@ -195,25 +195,24 @@ def similar_recipes(
     # 1) Try fuzzy title match
     best_idx, match_score = _best_title_index(recipe_name, cutoff=fuzzy_cutoff)
     if best_idx is not None and match_score >= fuzzy_cutoff:
-        query_index = int(best_idx)
-        query_vector = X[query_index]
+        query_vector = X[best_idx]
 
         # Determine cluster for that recipe
-        cluster_id = int(kmeans.labels_[query_index])
+        cluster_id = int(kmeans.labels_[best_idx])
         
         candidate_indexes = cluster_to_indices.get(cluster_id, np.array([], dtype=np.int32))
         if candidate_indexes.size == 0:
             candidate_indexes = np.arange(X.shape[0], dtype=np.int32)
 
-        candidate_indexes = candidate_indexes[candidate_indexes != query_index]
+        candidate_indexes = candidate_indexes[candidate_indexes != best_idx]
         if candidate_indexes.size == 0:
             return SimilarResponse(
                 query=recipe_name,
                 cluster=cluster_id,
                 total_candidates=0,
                 results=[],
-                matched_title=titles[query_index],
-                matched_filename=(filenames[query_index] if filenames and filenames[query_index] else None),
+                matched_title=titles[best_idx],
+                matched_filename=(filenames[best_idx] if filenames and filenames[best_idx] else None),
             )
 
         candidate_matrix = X[candidate_indexes]
@@ -224,8 +223,8 @@ def similar_recipes(
             cluster=cluster_id,
             total_candidates=int(candidate_matrix.shape[0]),
             results=results,
-            matched_title=titles[query_index],
-            matched_filename=(filenames[query_index] if filenames and filenames[query_index] else None),
+            matched_title=titles[best_idx],
+            matched_filename=(filenames[best_idx] if filenames and filenames[best_idx] else None),
         )
 
     return SimilarResponse(
