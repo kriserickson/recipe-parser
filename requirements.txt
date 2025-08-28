@@ -9,3 +9,10 @@ selenium~=4.32.0
 fastapi~=0.115.14
 uvicorn~=0.34.3
 python-multipart~=0.0.20
+ipywidgets
+sentence-transformers
+ipykernel
+python-dotenv
+numpy
+pydantic
+fastapi

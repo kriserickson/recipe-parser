@@ -90,6 +90,8 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
+__pycache__/
+
 # Specific to this project
 /data/html_pages/*.html
 /data/labels/*.json

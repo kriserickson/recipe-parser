@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recipe Suggest</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Recipe Suggest</h1>
+      <p class="subtitle">Find the best recipe match from your ingredients.</p>
+    </header>
+
+    <section class="controls">
+      <div class="control-group">
+        <label for="style">Recipe style</label>
+        <input id="style" list="style-suggestions" placeholder="Type a style e.g. 'A hearty lunch'" />
+        <datalist id="style-suggestions">
+          <option value="A hearty lunch"></option>
+          <option value="A dinner fit for family"></option>
+          <option value="Dinner in the turkish style"></option>
+          <option value="Quick weeknight dinner"></option>
+          <option value="Cozy comfort food"></option>
+        </datalist>
+      </div>
+
+      <div class="control-group">
+        <label for="ingredient-input">Ingredients</label>
+        <div class="ingredient-input-row">
+          <input id="ingredient-input" type="text" placeholder="Add an ingredient and press Enter" />
+          <button id="add-btn" class="btn">Add</button>
+        </div>
+        <div id="ingredients" class="pill-list"></div>
+      </div>
+
+      <div class="actions">
+        <button id="suggest-btn" class="btn primary">Suggest Recipe</button>
+        <span id="status" class="status"></span>
+      </div>
+    </section>
+
+    <section id="results" class="results hidden">
+      <h2>Suggestion</h2>
+      <div id="llm-result" class="card"></div>
+
+      <h3>Other Options</h3>
+      <table class="table" id="candidates-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+
+  <!-- Modal for recipe details -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Recipe</h3>
+        <button id="modal-close" class="btn">Close</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="/static/main.js"></script>
+</body>
+</html>
