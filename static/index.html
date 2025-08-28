@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Recipe Similarity Finder</title>
+	<link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+	<div class="container">
+		<header>
+			<h1>Find Similar Recipes</h1>
+			<p class="muted">Type a recipe name, pick from suggestions, and explore similar options.</p>
+		</header>
+
+		<section class="query">
+			<div class="field">
+				<label for="recipeName">Recipe name</label>
+				<input id="recipeName" list="recipeStyles" placeholder="e.g. Classic Pancakes" />
+				<datalist id="recipeStyles">
+					<option value="Classic Pancakes"></option>
+					<option value="Spaghetti Bolognese"></option>
+					<option value="Chicken Tikka Masala"></option>
+					<option value="Vegetarian Chili"></option>
+					<option value="Beef Stroganoff"></option>
+					<option value="Chocolate Chip Cookies"></option>
+					<option value="Caesar Salad"></option>
+					<option value="Crab Cakes"></option>
+				</datalist>
+			</div>
+			<button id="searchBtn">Search</button>
+		</section>
+
+		<section id="status" class="status" hidden></section>
+
+		<section id="results" class="results" hidden>
+			<h2>Similar Recipes</h2>
+			<div class="matched" id="matched"></div>
+			<ul id="list" class="card-list"></ul>
+		</section>
+	</div>
+
+	<div id="modal" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true">
+		<div class="modal-content">
+			<button class="close" id="closeModal" aria-label="Close">×</button>
+			<div id="modalBody"></div>
+		</div>
+	</div>
+
+	<script src="/static/main.js" type="module"></script>
+</body>
+</html>

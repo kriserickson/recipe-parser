@@ -3,7 +3,9 @@ import pickle
 from typing import List, Dict, Any
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from joblib import load as joblib_load
 import numpy as np
@@ -17,6 +19,8 @@ USE_SKLEARN_COSINE = True
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 MODELS_DIR = PROJECT_DIR / "models"
+STATIC_DIR = PROJECT_DIR / "static"
+RECIPES_DIR = PROJECT_DIR / "data" / "potential_labels"
 
 # ---------- Config: file paths ----------
 KMEANS_PATH = MODELS_DIR / "kmeans_model.pkl"
@@ -97,6 +101,18 @@ async def lifespan(app):
 # create app with lifespan handler
 app = FastAPI(title="Recipe Similarity API", version="1.0.0", lifespan=lifespan)
 
+# Serve static SPA
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def serve_index():
+    index_path = STATIC_DIR / "index.html"
+    if not index_path.exists():
+        raise HTTPException(status_code=404, detail="index.html not found. Build the SPA under /static.")
+    return FileResponse(str(index_path))
+
 
 def _cosine_sim_rank(query_vector: csr_matrix, candidate_matrix: csr_matrix, top_k: int, use_sklearn: bool ) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -150,32 +166,19 @@ def _format_results(candidate_global_indices: np.ndarray, sims: np.ndarray, top_
 
 def _best_title_index(name: str, cutoff: float = 0.35) -> tuple[int | None, float]:
     """
-    Return (best_index, score). Score is in [0..1]. Uses rapidfuzz if available,
-    otherwise falls back to difflib.SequenceMatcher.
+    Return (best_index, score). Score is in [0..1]. 
     """
     if not titles:
         return None, 0.0
 
-    # try rapidfuzz for better fuzzy matching if installed
-    try:
-        best = rf_process.extractOne(
-            name, {i: t for i, t in enumerate(titles)}, scorer=rf_fuzz.token_sort_ratio
-        )
-        if best is None:
-            return None, 0.0
-        match_val, score, idx = best  # rapidfuzz returns (match, score, key)
-        return int(idx), float(score) / 100.0
-    except Exception:
-        # fallback to difflib
-        name_l = name.lower()
-        best_idx = None
-        best_score = 0.0
-        for i, t in enumerate(titles):
-            score = SequenceMatcher(None, name_l, t.lower()).ratio()
-            if score > best_score:
-                best_score = score
-                best_idx = i
-        return best_idx, best_score
+    
+    best = rf_process.extractOne(
+        name, titles, scorer=rf_fuzz.partial_token_sort_ratio
+    )
+    if best is None:
+        return None, 0.0
+    match_val, score, idx = best  # rapidfuzz returns (match, score, key)
+    return int(idx), float(score) / 100.0
 
 # ---------- Endpoint ----------
 
@@ -234,3 +237,25 @@ def similar_recipes(
         matched_title=None,
         matched_filename=None,
     )
+
+
+# ---- Serve recipe JSON by filename (used by SPA modal) ----
+@app.get("/recipe/{filename}")
+def get_recipe_json(filename: str):
+    # Basic safety: prevent path traversal and enforce expected pattern
+    if "/" in filename or ".." in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    if not filename.startswith("recipe_") or not filename.endswith(".json"):
+        raise HTTPException(status_code=400, detail="Filename must look like recipe_XXXX.json")
+
+    file_path = RECIPES_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    try:
+        import json
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return JSONResponse(content=data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading recipe: {e}")
