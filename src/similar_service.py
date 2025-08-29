@@ -1,5 +1,6 @@
 from pathlib import Path
 import pickle
+import time
 from typing import List, Dict, Any
 from contextlib import asynccontextmanager
 
@@ -12,9 +13,17 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from rapidfuzz import process as rf_process, fuzz as rf_fuzz
 from sklearn.metrics.pairwise import cosine_similarity
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Toggle default similarity computation method:
-USE_SKLEARN_COSINE = True        
+USE_SKLEARN_COSINE = False        
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 MODELS_DIR = PROJECT_DIR / "models"
@@ -104,7 +113,6 @@ app = FastAPI(title="Recipe Similarity API", version="1.0.0", lifespan=lifespan)
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-
 @app.get("/", include_in_schema=False)
 def serve_index():
     index_path = STATIC_DIR / "index.html"
@@ -113,7 +121,7 @@ def serve_index():
     return FileResponse(str(index_path))
 
 
-def _cosine_sim_rank(query_vector: csr_matrix, candidate_matrix: csr_matrix, top_k: int, use_sklearn: bool ) -> tuple[np.ndarray, np.ndarray]:
+def _cosine_simularity_rank(query_vector: csr_matrix, candidate_matrix: csr_matrix, top_k: int, use_sklearn: bool ) -> tuple[np.ndarray, np.ndarray]:
     """
     Rank candidates by cosine similarity. With TF-IDF default norm='l2',
     dot product equals cosine similarity.
@@ -127,14 +135,22 @@ def _cosine_sim_rank(query_vector: csr_matrix, candidate_matrix: csr_matrix, top
                    
     Returns (top_local_indices_relative_to_cand_matrix, sims_array)
     """
+
+    # timing starts here
+    start = time.perf_counter()
     
     # Compute similarity scores (1D array length n_cands)
     if use_sklearn:
         # sklearn will handle normalization and safety checks.
         sims = cosine_similarity(query_vector, candidate_matrix).ravel()
+        method = "sklearn"
     else:
         # Fast sparse dot-product. Correct only if rows are L2-normalized (TF-IDF default).
         sims = (query_vector @ candidate_matrix.T).toarray().ravel()
+        method = "dot-product"
+
+    elapsed = time.perf_counter() - start
+    logger.info("cosine similarity computed using %s for %d candidates in %.4fs", method, sims.size, elapsed)
 
     n = sims.size
 
@@ -216,7 +232,7 @@ def similar_recipes(
             )
 
         candidate_matrix = X[candidate_indexes]
-        top_local, sims = _cosine_sim_rank(query_vector, candidate_matrix, top_k=min(top_k, candidate_matrix.shape[0]), use_sklearn=USE_SKLEARN_COSINE)
+        top_local, sims = _cosine_simularity_rank(query_vector, candidate_matrix, top_k=min(top_k, candidate_matrix.shape[0]), use_sklearn=USE_SKLEARN_COSINE)
         results = _format_results(candidate_indexes, sims, top_local)
         return SimilarResponse(
             query=recipe_name,
