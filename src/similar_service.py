@@ -121,7 +121,7 @@ def serve_index():
     return FileResponse(str(index_path))
 
 
-def _cosine_simularity_rank(query_vector: csr_matrix, candidate_matrix: csr_matrix, top_k: int, use_sklearn: bool ) -> tuple[np.ndarray, np.ndarray]:
+def _cosine_similarity_rank(query_vector: csr_matrix, candidate_matrix: csr_matrix, top_k: int, use_sklearn: bool ) -> tuple[np.ndarray, np.ndarray]:
     """
     Rank candidates by cosine similarity. With TF-IDF default norm='l2',
     dot product equals cosine similarity.
@@ -159,9 +159,12 @@ def _cosine_simularity_rank(query_vector: csr_matrix, candidate_matrix: csr_matr
 
     k = min(max(int(top_k), 1), n)  # ensure 1 <= k <= n
     
-    # np.argpartition is O(n) and avoids a full sort of all N elements. It returns an unordered partition 
-    # where the first k positions contain the top-k items. - We then fully sort only those k items to 
-    # produce descending order.
+ # np.argpartition is expected to run in linear time O(n) to partition the array and
+    # place the top-k candidates into the first k positions (unordered). You must
+    # then fully sort only those k items to produce a correctly ordered top-k list.
+    # This reduces work compared to sorting all n entries; the benefit grows with
+    # large n (e.g. hundreds of thousands to millions). For small candidate sets the
+    # overhead may make the simple argsort approach faster in practice
     part = np.argpartition(-sims, kth=k-1)[:k]
     top_local = part[np.argsort(-sims[part])]
     
@@ -216,12 +219,12 @@ def similar_recipes(
         # Determine cluster for that recipe
         cluster_id = int(kmeans.labels_[best_idx])
         
-        candidate_indexes = cluster_to_indices.get(cluster_id, np.array([], dtype=np.int32))
-        if candidate_indexes.size == 0:
-            candidate_indexes = np.arange(X.shape[0], dtype=np.int32)
+        candidate_indices = cluster_to_indices.get(cluster_id, np.array([], dtype=np.int32))
+        if candidate_indices.size == 0:
+            candidate_indices = np.arange(X.shape[0], dtype=np.int32)
 
-        candidate_indexes = candidate_indexes[candidate_indexes != best_idx]
-        if candidate_indexes.size == 0:
+        candidate_indices = candidate_indices[candidate_indices != best_idx]
+        if candidate_indices.size == 0:
             return SimilarResponse(
                 query=recipe_name,
                 cluster=cluster_id,
@@ -231,9 +234,9 @@ def similar_recipes(
                 matched_filename=(filenames[best_idx] if filenames and filenames[best_idx] else None),
             )
 
-        candidate_matrix = X[candidate_indexes]
-        top_local, sims = _cosine_simularity_rank(query_vector, candidate_matrix, top_k=min(top_k, candidate_matrix.shape[0]), use_sklearn=USE_SKLEARN_COSINE)
-        results = _format_results(candidate_indexes, sims, top_local)
+        candidate_matrix = X[candidate_indices]
+        top_local, sims = _cosine_similarity_rank(query_vector, candidate_matrix, top_k=min(top_k, candidate_matrix.shape[0]), use_sklearn=USE_SKLEARN_COSINE)
+        results = _format_results(candidate_indices, sims, top_local)
         return SimilarResponse(
             query=recipe_name,
             cluster=cluster_id,
