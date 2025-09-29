@@ -10,16 +10,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
-
+from contextlib import asynccontextmanager
 from sentence_transformers import SentenceTransformer
-
 
 class SuggestRequest(BaseModel):
     ingredients: List[str]
     recipe_style: Optional[str] = ""
 
-
-app = FastAPI()
+useOpenAI = False
 
 
 # locate project root and model file (matches notebook layout)
@@ -61,7 +59,7 @@ def find_best_matches(query_ingredients: List[str], top_n: int = 10):
         return []
 
     q_text = ", ".join(query_ingredients)
-    q_vec = np.asarray(model.encode(q_text))
+    q_vec = model.encode(q_text)
     q_norm = np.linalg.norm(q_vec)
     if q_norm == 0:
         q_norm = 1.0
@@ -91,6 +89,34 @@ def build_candidate_list(matches):
     # dump compact JSON array string
     return json.dumps(candidates)
 
+def extract_json_from_text(text: str):
+    """
+    Try to extract and parse the first JSON object or array found in text.
+    Returns the parsed object, or None if nothing valid was found.
+    """
+    import json
+
+    # 1) quick attempt: whole text is JSON
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    dec = json.JSONDecoder()
+    # search for likely start chars
+    for start_char in ('{', '['):
+        idx = text.find(start_char)
+        while idx != -1:
+            try:
+                obj, end = dec.raw_decode(text[idx:])
+                # raw_decode succeeded; return the object
+                return obj
+            except json.JSONDecodeError:
+                # try next occurrence of the same start_char
+                idx = text.find(start_char, idx + 1)
+
+    return None
+
 
 def call_llm(candidate_list_str: str, user_ingredients: List[str], recipe_style: str) -> dict:
     """Call OpenAI or local Ollama as in the notebook and return parsed JSON or raw content."""
@@ -108,7 +134,7 @@ def call_llm(candidate_list_str: str, user_ingredients: List[str], recipe_style:
         "{\"recipe_name\": \"Tomato Soup\", \"file_name\": \"recipe_00031.json\", \"reason\": \"Because soup is good food\"}"
     )
 
-    if os.getenv("OPENAI_API_KEY"):
+    if useOpenAI and os.getenv("OPENAI_API_KEY"):
         API_KEY = os.getenv("OPENAI_API_KEY")
         api_url = "https://api.openai.com/v1/chat/completions"
         headers = {
@@ -147,15 +173,14 @@ def call_llm(candidate_list_str: str, user_ingredients: List[str], recipe_style:
         content = resp.text
 
     # try parse JSON from assistant
-    try:
-        parsed = json.loads(content)
-        return {"ok": True, "parsed": parsed}
-    except Exception:
-        return {"ok": False, "text": content}
+    parsed = extract_json_from_text(content)
+    if parsed is not None:
+        return {"ok": True, "parsed": parsed}            
+    return {"ok": False, "text": content}
 
-
-@app.on_event("startup")
-def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
     try:
         _load_resources()
     except Exception as e:
@@ -165,6 +190,12 @@ def startup():
     # Mount static assets if present
     if STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+    yield
+    # shutdown (no-op)
+    return
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.post("/suggest_recipe")
