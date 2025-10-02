@@ -8,7 +8,7 @@ import numpy as np
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from sentence_transformers import SentenceTransformer
@@ -16,9 +16,7 @@ from sentence_transformers import SentenceTransformer
 class SuggestRequest(BaseModel):
     ingredients: List[str]
     recipe_style: Optional[str] = ""
-
-useOpenAI = False
-
+    top_n: Optional[int] = 5  # number of candidates to return
 
 # locate project root and model file (matches notebook layout)
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -53,7 +51,7 @@ def _load_resources():
     model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
-def find_best_matches(query_ingredients: List[str], top_n: int = 10):
+def _find_best_matches(query_ingredients: List[str], top_n: int = 10):
     """Return list of (index, entry_dict, score) for top_n matches."""
     if not embedding_db:
         return []
@@ -76,7 +74,7 @@ def find_best_matches(query_ingredients: List[str], top_n: int = 10):
     return results
 
 
-def build_candidate_list(matches):
+def _build_candidate_list(matches):
     """Return a JSON string of candidate recipes for inclusion in the prompt."""
     candidates = []
     for _, entry, score in matches:
@@ -89,7 +87,7 @@ def build_candidate_list(matches):
     # dump compact JSON array string
     return json.dumps(candidates)
 
-def extract_json_from_text(text: str):
+def _extract_json_from_text(text: str):
     """
     Try to extract and parse the first JSON object or array found in text.
     Returns the parsed object, or None if nothing valid was found.
@@ -118,7 +116,7 @@ def extract_json_from_text(text: str):
     return None
 
 
-def call_llm(candidate_list_str: str, user_ingredients: List[str], recipe_style: str) -> dict:
+def _call_llm(candidate_list_str: str, user_ingredients: List[str], recipe_style: str) -> dict:
     """Call OpenAI or local Ollama as in the notebook and return parsed JSON or raw content."""
     system_msg = (
         "You are a helpful cooking assistant. A user has certain ingredients, and we have some candidate recipes from a database. "
@@ -134,18 +132,20 @@ def call_llm(candidate_list_str: str, user_ingredients: List[str], recipe_style:
         "{\"recipe_name\": \"Tomato Soup\", \"file_name\": \"recipe_00031.json\", \"reason\": \"Because soup is good food\"}"
     )
 
-    if useOpenAI and os.getenv("OPENAI_API_KEY"):
-        API_KEY = os.getenv("OPENAI_API_KEY")
+    use_open_ai = os.environ.get('USE_OPEN_AI', 'False').lower() == 'true'
+    api_key = os.environ.get('OPENAI_API_KEY', None)
+    model_name = os.environ.get('MODEL_NAME', 'gpt-4o')
+
+
+    if use_open_ai and api_key:
         api_url = "https://api.openai.com/v1/chat/completions"
         headers = {
-            "Authorization": f"Bearer {API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
-        model_name = "gpt-4.1-nano"
     else:
         api_url = "http://127.0.0.1:11434/v1/chat/completions"
         headers = {"Content-Type": "application/json"}
-        model_name = "gemma3:1b"
 
     data = {
         "model": model_name,
@@ -156,6 +156,8 @@ def call_llm(candidate_list_str: str, user_ingredients: List[str], recipe_style:
     }
     if not model_name.startswith("gpt-5"):
         data["temperature"] = 0.3
+    else:
+        data["reasoning_effort"] = "minimal"
 
     resp = requests.post(api_url, headers=headers, json=data)
     try:
@@ -164,8 +166,8 @@ def call_llm(candidate_list_str: str, user_ingredients: List[str], recipe_style:
         raise HTTPException(status_code=502, detail=f"LLM request failed: {e} - {resp.text}")
 
     resp_json = resp.json()
+
     # attempt to extract assistant content
-    content = None
     try:
         content = resp_json["choices"][0]["message"]["content"].strip()
     except Exception:
@@ -173,7 +175,7 @@ def call_llm(candidate_list_str: str, user_ingredients: List[str], recipe_style:
         content = resp.text
 
     # try parse JSON from assistant
-    parsed = extract_json_from_text(content)
+    parsed = _extract_json_from_text(content)
     if parsed is not None:
         return {"ok": True, "parsed": parsed}            
     return {"ok": False, "text": content}
@@ -188,26 +190,24 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(f"Failed to load resources: {e}")
 
     # Mount static assets if present
-    if STATIC_DIR.exists():
-        app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
 
     yield
-    # shutdown (no-op)
+
     return
 
 app = FastAPI(lifespan=lifespan)
 
-
 @app.post("/suggest_recipe")
 def suggest_recipe(req: SuggestRequest):
     # 1) find best matches (use top_n * 2 to be generous to LLM)
-    candidates = find_best_matches(req.ingredients, top_n=25)
+    candidates = _find_best_matches(req.ingredients, top_n=req.top_n)
 
     # 2) construct candidate JSON string for prompt
-    candidate_list_str = build_candidate_list(candidates)
+    candidate_list_str = _build_candidate_list(candidates)
 
     # 3) call LLM using same prompt structure as notebook
-    llm_out = call_llm(candidate_list_str, req.ingredients, req.recipe_style)
+    llm_out = _call_llm(candidate_list_str, req.ingredients, req.recipe_style)
 
     return {
         "suggested_recipe": llm_out,
@@ -217,19 +217,9 @@ def suggest_recipe(req: SuggestRequest):
         ],
     }
 
-
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=FileResponse)
 def serve_index():
-    index_path = STATIC_DIR / "index.html"
-    if not index_path.exists():
-        # Minimal fallback page if the SPA isn't built yet
-        return HTMLResponse("""
-        <!doctype html>
-        <html><head><meta charset='utf-8'><title>Recipe Suggest</title></head>
-        <body><h1>Recipe Suggest</h1><p>The SPA was not found. Create static/index.html.</p></body></html>
-        """, status_code=200)
-    return FileResponse(str(index_path))
-
+    return FileResponse(str(STATIC_DIR / "index.html"))
 
 @app.get("/recipe/{filename}")
 def get_recipe_file(filename: str):
