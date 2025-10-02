@@ -1,26 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
-    {
-      "name": "Python Debugger: validate_and_filter_recipes",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/src/validate_and_filter_recipes.py",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}",
-      "env": {},
-      "args": []
-    },
-    {
-      "name": "Python Debugger: cleanup data",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/src/cleanup_data.py",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}",
-      "env": {},
-      "args": []
-    },
+
    {
       "name": "Uvicorn: Debug (single process)",
       "type": "debugpy",
